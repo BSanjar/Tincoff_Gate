@@ -30,11 +30,11 @@ namespace Tincoff_Gate.Integration
         {
             _appSettings = appSettings;
         }
-        public CheckRespXfer CheckXfer(CheckReqXfer checkReqXfer, string addr)
+        public CheckRespXfer CheckXfer(CheckReqXfer checkReqXfer)
         {
                       string body = JsonConvert.SerializeObject(checkReqXfer);
-                addr = addr + "/transfer/check";
-                string response = QureyToXfer(body, addr);
+                string addr = _appSettings.Value.hostXref + "/transfer/check";
+                string response = QureyToXfer(body,addr);
                 CheckRespXfer resp = new CheckRespXfer();
                 resp = JsonConvert.DeserializeObject<CheckRespXfer>(response);
                 return resp;
@@ -198,7 +198,7 @@ namespace Tincoff_Gate.Integration
             string resp = "";
             try
             {
-                resp = "<request point=\""+_appSettings.Value.pointSL+ "\">\n    <advanced service=\"" + _appSettings.Value.ServiceIdSL + "\" function=\"get-cardinfo\" >\n        <attribute name=\"id1\" value=\"" + acc  + "\"/>\n    </advanced>\n</request>";
+                resp = "<request point=\""+_appSettings.Value.pointSL+ "\">\n    <advanced service=\"" + _appSettings.Value.ServiceIdSL + "\" function=\"CheckAcc\" >\n        <attribute name=\"id1\" value=\"" + acc  + "\"/>\n    </advanced>\n</request>";
             }
             catch(Exception ex)
             {
@@ -211,36 +211,38 @@ namespace Tincoff_Gate.Integration
             string resp = "";
             try
             {
-                //string guid = Guid.NewGuid().ToString();
+                //platformReferenceNumber = guid sender + guid platform
+                string guid = req.platformReferenceNumber.Substring(req.platformReferenceNumber.Count()/2, (req.platformReferenceNumber.Count()/2));
                 double summWithComiss = req.receivingAmount.amount * 100; //сумма с комиссией
                 double summ = req.receivingAmount.amount * 100;           //сумма без комиссии
                 string date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "+0300";
-                resp = "<request point=\""+_appSettings.Value.pointSL+"\">\n    <opayment id=\""+ req.platformReferenceNumber + "\" sum-in=\""+ summWithComiss + "\" sum=\""+ summ + "\" check=\"0\" service=\""+_appSettings.Value.ServiceIdSL+"\" " +
-                    "account=\""+req.receiver.identification.value+"\" source=\"MIB-EXTERNAL\" date=\""+ date+"\">\n        " +
-                    "<attribute name=\"servId\" value=\""+_appSettings.Value.ServiceIdSL+"\" />" +
-                    "<attribute name=\"cr_department\" value=\"" + cr.department + "\" />" +
-                    "<attribute name=\"cr_number\" value=\"" + cr.number + "\" />" +
-                    "<attribute name=\"cr_currency\" value=\"" + cr.currency + "\" />" +
-                    "<attribute name=\"cr_processing\" value=\"" + cr.processing + "\" />" +
-                    "<attribute name=\"cr_cardFl\" value=\"" + cr.cardFl + "\" />" +
-                    "<attribute name=\"cr_name\" value=\"" + cr.name + "\" />" +
-                    //"<attribute name=\"accountCredit_inn\" value=\"" + cr.i + "\" />" +
-                    "<derivation name=\"pma\" value=\"" + cr.number + "\" />\n       " + //карта списания
-                    "<derivation name=\"department\" value=\"" + _appSettings.Value.department + "\" />\n        " +
-                    "<derivation name=\"currency\" value=\"" + _appSettings.Value.currency + "\" />\n        " +
-                    "<derivation name=\"processing\" value=\"" + _appSettings.Value.processing + "\" />\n        " +
-                    "<derivation name=\"name\" value=\"" + _appSettings.Value.name + "\" />\n        " +
-                    "<derivation name=\"inn\" value=\"" + _appSettings.Value.inn + "\" />\n        " +
-                    "<derivation name=\"cardFl\" value=\"" + _appSettings.Value.cardfl + "\" />\n        " +
-                    "<derivation name=\"amountCurrency\" value=\"" + _appSettings.Value.amountCurrency + "\" />\n        " +
-                    "<derivation name=\"debitAmount\" value=\"" + req.receivingAmount.amount + "\" />\n        " +
-                    "<derivation name=\"creditAmount\" value=\"" + req.receivingAmount.amount + "\" />\n        " +
-                    "<derivation name=\"dealingRate\" value=\"" + _appSettings.Value.dealingRate + "\" />\n        " +
-                    "<derivation name=\"description\" value=\""+req.comment+"\" />\n        " +
-                    "<derivation name=\"source\" value=\"" + _appSettings.Value.source + "\" />\n        " +
-                    "<derivation name=\"docNum\" value=\"\" />\n        " +
-                    "<derivation name=\"processId\" value=\""+req.platformReferenceNumber+"\" />\n    " +
-                    "</opayment>\n</request>";
+                string servId = _appSettings.Value.EsbPayAcc;
+                if (cr.cardFl == "1")
+                {
+                    servId = _appSettings.Value.EsbPayCard;
+                }
+                resp = "<request point=\"" + _appSettings.Value.pointSL + "\">\n    "+
+                    "<opayment id=\"" + guid + "\"\n sum=\"" + summ + "\"\n check=\"0\"\n service=\"" + _appSettings.Value.ServiceIdSL + "\"\n " +
+                    "account=\"" + req.receiver.identification.value + "\"\n date=\"" + date + "\">\n        " +
+                    "<attribute name=\"servId\" value=\"" + servId + "\" />\n        " +
+                    "<attribute name=\"source\" value=\"" + _appSettings.Value.source + "\" />\n        " +
+                    "<attribute name=\"pointAccDep\" value=\"" + _appSettings.Value.pointAccDep + "\" />\n        " +
+                    "<attribute name=\"pointAccNum\" value=\"" + _appSettings.Value.pointAccNum + "\" />\n        " +
+                    "<attribute name=\"pointAccCur\" value=\"" + _appSettings.Value.pointAccCur + "\" />\n        " +
+                    "<attribute name=\"pointAccProc\" value=\"" + _appSettings.Value.pointAccProc + "\" />\n        " +
+                    "<attribute name=\"pointAccInn\" value=\"" + _appSettings.Value.pointAccInn + "\" />\n        " +
+                    "<attribute name=\"pointAccName\" value=\"" + _appSettings.Value.pointAccName + "\" />\n " +
+                    "<attribute name=\"cliAccNum\" value=\"" + cr.number + "\" />\n        " +
+                    "<attribute name=\"cliAccDep\" value=\"" + cr.department + "\" />\n        " +
+                    "<attribute name=\"cliAccCurr\" value=\"" + cr.currency + "\" />\n        " +
+                    "<attribute name=\"cliAccProc\" value=\"" + cr.processing + "\" />\n        " +
+                    "<attribute name=\"cliAccName\" value=\"" + cr.name + "\" />\n        " +
+                    "<attribute name=\"cliAccCardFl\" value=\"" + cr.cardFl + "\" />\n        " +
+                    "<attribute name=\"description\" value=\"" + req.comment + "\" />\n        " +
+                    "<attribute name=\"cliAccInn\" value=\"\" />   " +
+                    "</opayment>\n" +
+                    "</request>";
+
             }
             catch (Exception ex)
             {
@@ -253,7 +255,8 @@ namespace Tincoff_Gate.Integration
             string resp = "";
             try
             {
-                resp = "<request point=\""+_appSettings.Value.pointSL+ "\">\n<status id=\"" + req.platformReferenceNumber + "\"/>\n</request>";
+                string guid = req.platformReferenceNumber.Substring(req.platformReferenceNumber.Count() / 2, (req.platformReferenceNumber.Count() / 2));
+                resp = "<request point=\""+_appSettings.Value.pointSL+ "\">\n<status id=\"" + guid + "\"/>\n</request>";
             }
             catch (Exception ex)
             {
@@ -288,8 +291,8 @@ namespace Tincoff_Gate.Integration
                 resp.receiver.identification = new Models.CommonModels.Identification();
                 resp.receiver.identification.type = "";
                 resp.receiver.identification.value = "";
-                resp.receiver.particiant = new Models.CommonModels.Participant();
-                resp.receiver.particiant.participantId = "";
+                resp.receiver.participant = new Models.CommonModels.Participant();
+                resp.receiver.participant.participantId = "";
                 resp.receivingAmount = new Models.CommonModels.Ammount();
                 resp.receivingAmount.amount = 0;
                 resp.receivingAmount.currency = "";
@@ -307,7 +310,7 @@ namespace Tincoff_Gate.Integration
                         resp.receiver.displayName = re.maskedName;
                         resp.receiver.identification.type = "PHONE";
                         resp.receiver.identification.value = req.receiver.identification.value;
-                        resp.receiver.particiant.participantId = req.receiver.particiant?.participantId;
+                        resp.receiver.participant.participantId = req.receiver.participant?.participantId;
                         resp.receivingAmount.amount = req.receivingAmount.amount;
                         resp.receivingAmount.currency = req.receivingAmount.currency;
                     }
@@ -358,7 +361,7 @@ namespace Tincoff_Gate.Integration
                 resp.transferState.errorCode = 0;
                 resp.transferState.errorMessage = "0";
                 resp.transferState.state = "0";
-                if (state == "60"|| state == "40" || state == "20")
+                if (state == "60"||  state == "20")
                 {
                     resp.transferState.errorCode = 200;
                     resp.transferState.errorMessage = "Запрос подтверждения перевода выполнен без ошибок";

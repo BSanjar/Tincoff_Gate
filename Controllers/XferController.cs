@@ -35,11 +35,19 @@ namespace Tincoff_Gate.Controllers
             {
                 string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
                 CheckReqXfer req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
+
+                string ammount = req.paymentAmount.amount.ToString();
+                if (!(req.paymentAmount.amount.ToString().Contains(',')|| req.paymentAmount.amount.ToString().Contains('.')))
+                {
+                    ammount = ammount + ".0";
+                }
+                
+
                 string ConcatStr =
                     req.originatorReferenceNumber +
                     req.originator.identification.value +
                     req.receiver.identification.value +
-                    req.paymentAmount.amount +
+                    ammount +
                     req.paymentAmount.currency +
                     req.receivingAmount.currency;
                 Signature signature = new Signature();
@@ -48,7 +56,7 @@ namespace Tincoff_Gate.Controllers
                 Integration.Integration integration = new Integration.Integration(_appSettings);
 
                 //CheckReqXfer req = new CheckReqXfer();
-                resp = integration.CheckXfer(req, _appSettings.Value.hostXref);
+                resp = integration.CheckXfer(req);
                
             }
 

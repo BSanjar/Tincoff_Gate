@@ -278,6 +278,9 @@ namespace Tincoff_Gate
         }
 
 
+        
+
+
         public bool VerifySignature(string text, string  signature_str)
         {
             byte[] signature = System.Convert.FromBase64String(signature_str);

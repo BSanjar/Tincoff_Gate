@@ -13,18 +13,17 @@
         public string EsbPayAcc { get; set; }
 
         //ревизиты счета списания
-        //public string pma { get; set; }
-        public string department { get; set; }
-        public string currency { get; set; }
-        public string processing { get; set; }
-        public string name { get; set; }
-        public string inn { get; set; }
-        public string cardfl { get; set; }
-        public string amountCurrency { get; set; }
-        public string dealingRate { get; set; }
+        public string pointAccNum { get; set; }
+        public string pointAccDep { get; set; }
+        public string pointAccCur { get; set; }
+        public string pointAccProc { get; set; }
+        public string pointAccName { get; set; }
+        public string pointAccInn { get; set; }
         public string source { get; set; }
+
+        
         //
-       
+
 
     }
 }
