@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Tincoff_Gate.Integration;
 using Tincoff_Gate.Models;
 using Tincoff_Gate.Models.ToXfer;
 
@@ -21,19 +22,22 @@ namespace Tincoff_Gate.Controllers
         //private readonly ILogger<HomeController> _logger;
 
         private readonly IOptions<AppSettings> _appSettings;
+        private readonly IOptions<ConnectionStrings> _connectionString;
 
-        public XferController(IOptions<AppSettings> appSettings)
+        public XferController(IOptions<AppSettings> appSettings, IOptions<ConnectionStrings> connectionString)
         {
             _appSettings = appSettings;
+            _connectionString = connectionString;
         }
         [HttpPost]
         [Route("check")]
         public CheckRespXfer Check()
         {
             CheckRespXfer resp = new CheckRespXfer();
+            string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
+            string status = "info";
             try
             {
-                string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
                 CheckReqXfer req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
 
                 string ammount = req.paymentAmount.amount.ToString();
@@ -65,18 +69,25 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось выполнить проверку, ошибка: " + ex.Message;
+                status = "error";
             }
+
+            Logger logger = new Logger(_connectionString, _appSettings);
+            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript=resp.transferState.errorMessage, EventName= "Xfer/check",Status= status, request = reqBody, response = JsonConvert.SerializeObject(resp)});
+
             return resp;
         }
 
         [HttpPost]
-        [Route("pay")]
-        public ConfirmRespXfer Pay()
+        [Route("confirm")]
+        public ConfirmRespXfer Confirm()
         {
             ConfirmRespXfer resp = new ConfirmRespXfer();
+            string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
+            string status = "info";
             try
             {
-                string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
+               
                 ConfirmReqXfer req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
                 string ConcatStr =
                     req.platformReferenceNumber +
@@ -103,7 +114,11 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось провести платеж, ошибка: " + ex.Message;
+                status = "error";
             }
+            Logger logger = new Logger(_connectionString, _appSettings);
+            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = resp.transferState.errorMessage, EventName = "Xfer/confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+
             return resp;
         }
 
@@ -112,23 +127,12 @@ namespace Tincoff_Gate.Controllers
         public StatusRespXfer State()
         {
             StatusRespXfer resp = new StatusRespXfer();
+            string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
+            string status = "info";
             try
             {
-                string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
                 StatusReqXfer req = JsonConvert.DeserializeObject<StatusReqXfer>(Convert.ToString(reqBody));
-                //string ConcatStr =
-                //    req.platformReferenceNumber +
-                //    req.originator.identification.value +
-                //    req.receiver.identification.value +
-                //    req.paymentAmount.amount +
-                //    req.paymentAmount.currency +
-                //    req.settlementAmount.amount +
-                //    req.settlementAmount.currency +
-                //    req.receivingAmount.amount +
-                //    req.receivingAmount.currency;
-                //Signature signature = new Signature();
-                //string sign = signature.GetSign(ConcatStr);
-                //req.originatorSignature = sign;
+               
                 Integration.Integration integration = new Integration.Integration(_appSettings);
 
                 //CheckReqXfer req = new CheckReqXfer();
@@ -140,9 +144,12 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось провести платеж, ошибка: " + ex.Message;
+                status = "error";
             }
+            Logger logger = new Logger(_connectionString, _appSettings);
+            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = resp.transferState.errorMessage, EventName = "Xfer/state", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+
             return resp;
         }
-
     }
 }

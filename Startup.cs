@@ -32,6 +32,7 @@ namespace Tincoff_Gate
                 options.AllowSynchronousIO = true;
             });
             services.Configure<AppSettings>(Configuration.GetSection("AppSettings"));
+            services.Configure<ConnectionStrings>(Configuration.GetSection("ConnectionStrings"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

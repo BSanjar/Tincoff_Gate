@@ -14,5 +14,4 @@ namespace Tincoff_Gate.Models.ToBank
         public DateTime checkDate { get; set; }
         public TransferState transferState { get; set; }
     }
-
 }

@@ -21,7 +21,9 @@
         public string pointAccInn { get; set; }
         public string source { get; set; }
 
-        
+        public string LogAll { get; set; }
+
+
         //
 
 
