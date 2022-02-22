@@ -16,7 +16,7 @@ namespace Tincoff_Gate.Controllers
 {
     //отправка из ХБК
     [ApiController]
-    [Route("Hbk")]
+    [Route("transfer")]
     public class HbkController : ControllerBase
     {
         private AppSettings _config;
@@ -43,18 +43,35 @@ namespace Tincoff_Gate.Controllers
             try
             {
                 CheckReqBank req = JsonConvert.DeserializeObject<CheckReqBank>(Convert.ToString(reqBody));
+                string ammount = req.paymentAmount.amount.ToString().Replace(",", ".");
+                string SettlAmmount = req.settlementAmount.amount.ToString().Replace(",", ".");
+                string recAmmount = req.receivingAmount.amount.ToString().Replace(",", ".");
+                if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                {
+                    ammount = ammount + ".0";
+                }
+
+                if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                {
+                    SettlAmmount = SettlAmmount + ".0";
+                }
+
+                if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                {
+                    recAmmount = recAmmount + ".0";
+                }
                 string ConcatStr =
                     req.platformReferenceNumber +
                     req.receiver.identification.value +
-                    req.paymentAmount.amount +
+                    ammount +
                     req.paymentAmount.currency +
-                    req.settlementAmount.amount +
+                    SettlAmmount +
                     req.settlementAmount.currency +
-                    req.receivingAmount.amount +
+                    recAmmount +
                     req.receivingAmount.currency;
                 Signature signature = new Signature();
 
-                bool signVerificed = signature.VerifySignature(reqBody, req.platformSignature);
+                bool signVerificed = signature.VerifySignature(ConcatStr, req.platformSignature);
 
                 //test
                 signVerificed = true;
@@ -102,21 +119,40 @@ namespace Tincoff_Gate.Controllers
             string descript = "успех";
             try
             {
-
                 ConfirmReqBank req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
+
+                string ammount = req.paymentAmount.amount.ToString().Replace(",", ".");
+                string SettlAmmount = req.settlementAmount.amount.ToString().Replace(",", ".");
+                string recAmmount = req.receivingAmount.amount.ToString().Replace(",", ".");
+                if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                {
+                    ammount = ammount + ".0";
+                }
+
+                if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                {
+                    SettlAmmount = SettlAmmount + ".0";
+                }
+
+                if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                {
+                    recAmmount = recAmmount + ".0";
+                }
+
+                
                 string ConcatStr =
                     req.platformReferenceNumber +
                     req.originator.identification.value +
                     req.receiver.identification.value +
-                    req.paymentAmount.amount +
+                    ammount +
                     req.paymentAmount.currency +
-                    req.settlementAmount.amount +
+                    SettlAmmount +
                     req.settlementAmount.currency +
-                    req.receivingAmount.amount +
+                    recAmmount +
                     req.receivingAmount.currency;
                 Signature signature = new Signature();
 
-                bool signVerificed = signature.VerifySignature(reqBody, req.platformSignature);
+                bool signVerificed = signature.VerifySignature(ConcatStr, req.platformSignature);
                 //test
                 signVerificed = true;
                 if (!signVerificed)
@@ -198,6 +234,5 @@ namespace Tincoff_Gate.Controllers
 
             return resp;
         }
-
     }
 }

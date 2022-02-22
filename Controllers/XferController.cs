@@ -39,7 +39,7 @@ namespace Tincoff_Gate.Controllers
             try
             {
                 CheckReqXfer req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
-
+                
                 string ammount = req.paymentAmount.amount.ToString();
                 if (!(req.paymentAmount.amount.ToString().Contains(',')|| req.paymentAmount.amount.ToString().Contains('.')))
                 {
@@ -61,7 +61,7 @@ namespace Tincoff_Gate.Controllers
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.CheckXfer(req);
-               
+                resp.platformReferenceNumber = req.originatorReferenceNumber;
             }
 
             catch (Exception ex)
@@ -89,15 +89,34 @@ namespace Tincoff_Gate.Controllers
             {
                
                 ConfirmReqXfer req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
+
+                string ammount = req.paymentAmount.amount.ToString().Replace(",",".");
+                string SettlAmmount = req.settlementAmount.amount.ToString().Replace(",", "."); 
+                string recAmmount = req.receivingAmount.amount.ToString().Replace(",", "."); 
+                if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                {
+                    ammount = ammount + ".0";
+                }
+
+                if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                {
+                    SettlAmmount = SettlAmmount + ".0";
+                }
+
+                if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                {
+                    recAmmount = recAmmount + ".0";
+                }
+
                 string ConcatStr =
                     req.platformReferenceNumber +
                     req.originator.identification.value +
                     req.receiver.identification.value +
-                    req.paymentAmount.amount +
+                    ammount +
                     req.paymentAmount.currency +
-                    req.settlementAmount.amount +
+                    SettlAmmount +
                     req.settlementAmount.currency +
-                    req.receivingAmount.amount+
+                    recAmmount +
                     req.receivingAmount.currency;
                 Signature signature = new Signature();
                 string sign = signature.SignData(ConcatStr);
@@ -106,7 +125,7 @@ namespace Tincoff_Gate.Controllers
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.ConfirmXfer(req, _appSettings.Value.hostXref);
-               
+                resp.platformReferenceNumber = req.platformReferenceNumber;
             }
 
             catch (Exception ex)
@@ -132,11 +151,12 @@ namespace Tincoff_Gate.Controllers
             try
             {
                 StatusReqXfer req = JsonConvert.DeserializeObject<StatusReqXfer>(Convert.ToString(reqBody));
-               
+                resp.platformReferenceNumber = req.platformReferenceNumber;
                 Integration.Integration integration = new Integration.Integration(_appSettings);
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.StatusXfer(req, _appSettings.Value.hostXref);
+                resp.platformReferenceNumber = req.platformReferenceNumber;
             }
 
             catch (Exception ex)
@@ -151,5 +171,40 @@ namespace Tincoff_Gate.Controllers
 
             return resp;
         }
+
+        [HttpPost]
+        [Route("rate")]
+        public RateRespXfer Rate()
+        {
+            RateRespXfer resp = new RateRespXfer();
+            string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
+            string status = "info";
+            string descript = "Успех";
+            try
+            {
+                RateReqXfer req = JsonConvert.DeserializeObject<RateReqXfer>(Convert.ToString(reqBody));
+
+                Integration.Integration integration = new Integration.Integration(_appSettings);
+
+                //CheckReqXfer req = new CheckReqXfer();
+                resp = integration.RateXfer(req, _appSettings.Value.hostXref);
+                resp.errCode = "0";
+                resp.errMessage = "успех";
+            }
+
+            catch (Exception ex)
+            {
+                status = "error";
+                descript = ex.Message;
+                resp.errCode = "-1";
+                resp.errMessage = ex.Message;
+            }
+            Logger logger = new Logger(_connectionString, _appSettings);
+            logger.InsertLog(new Log { id = "", Descript = descript, EventName = "Xfer/rate", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+
+            return resp;
+        }
+
+
     }
 }

@@ -57,6 +57,16 @@ namespace Tincoff_Gate.Integration
             resp = JsonConvert.DeserializeObject<StatusRespXfer>(response);
             return resp;
         }
+
+        public RateRespXfer RateXfer(RateReqXfer ReqXfer, string addr)
+        {
+            string body = JsonConvert.SerializeObject(ReqXfer);
+            addr = addr + "/exchangerates";
+            string response = QureyToXfer(body, addr);
+            RateRespXfer resp = new RateRespXfer();
+            resp = JsonConvert.DeserializeObject<RateRespXfer>(response);
+            return resp;
+        }
         private string QureyToXfer(string body, string addr)
         {
             try
@@ -213,8 +223,8 @@ namespace Tincoff_Gate.Integration
             {
                 //platformReferenceNumber = guid sender + guid platform
                 string guid = req.platformReferenceNumber.Substring(req.platformReferenceNumber.Count()/2, (req.platformReferenceNumber.Count()/2));
-                double summWithComiss = req.receivingAmount.amount * 100; //сумма с комиссией
-                double summ = req.receivingAmount.amount * 100;           //сумма без комиссии
+                double summWithComiss = (double)(req.receivingAmount.amount * 100); //сумма с комиссией
+                double summ = (double)(req.receivingAmount.amount * 100);           //сумма без комиссии
                 string date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "+0300";
                 string servId = _appSettings.Value.EsbPayAcc;
                 if (cr.cardFl == "1")
