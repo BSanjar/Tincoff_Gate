@@ -7,7 +7,7 @@ namespace Tincoff_Gate.Models.CommonModels
 {
     public class Ammount
     {
-        public double? amount { get; set; }
+        public string? amount { get; set; }
         public string currency { get; set; }
     }
 }

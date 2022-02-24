@@ -43,23 +43,23 @@ namespace Tincoff_Gate.Controllers
             try
             {
                 CheckReqBank req = JsonConvert.DeserializeObject<CheckReqBank>(Convert.ToString(reqBody));
-                string ammount = req.paymentAmount.amount.ToString().Replace(",", ".");
-                string SettlAmmount = req.settlementAmount.amount.ToString().Replace(",", ".");
-                string recAmmount = req.receivingAmount.amount.ToString().Replace(",", ".");
-                if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
-                {
-                    ammount = ammount + ".0";
-                }
+                string ammount = req.paymentAmount.amount;
+                string SettlAmmount = req.settlementAmount.amount?.ToString().Replace(",", ".");
+                string recAmmount = req.receivingAmount.amount?.ToString().Replace(",", ".");
+                //if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                //{
+                //    ammount = ammount + ".0";
+                //}
 
-                if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
-                {
-                    SettlAmmount = SettlAmmount + ".0";
-                }
+                //if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                //{
+                //    SettlAmmount = SettlAmmount + ".0";
+                //}
 
-                if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
-                {
-                    recAmmount = recAmmount + ".0";
-                }
+                //if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                //{
+                //    recAmmount = recAmmount + ".0";
+                //}
                 string ConcatStr =
                     req.platformReferenceNumber +
                     req.receiver.identification.value +
@@ -74,7 +74,7 @@ namespace Tincoff_Gate.Controllers
                 bool signVerificed = signature.VerifySignature(ConcatStr, req.platformSignature);
 
                 //test
-                signVerificed = true;
+                //signVerificed = true;
                 if (!signVerificed)
                 {
                     resp.transferState = new Models.CommonModels.TransferState();
@@ -98,6 +98,7 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState.errorCode = 103;
                 resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при проверке";
                 resp.transferState.state = "INVALID";
+                resp.checkDate = DateTime.Now;
                 descript = ex.Message;
                 status = "error";
             }
@@ -121,23 +122,23 @@ namespace Tincoff_Gate.Controllers
             {
                 ConfirmReqBank req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
 
-                string ammount = req.paymentAmount.amount.ToString().Replace(",", ".");
-                string SettlAmmount = req.settlementAmount.amount.ToString().Replace(",", ".");
-                string recAmmount = req.receivingAmount.amount.ToString().Replace(",", ".");
-                if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
-                {
-                    ammount = ammount + ".0";
-                }
+                string ammount = req.paymentAmount.amount;
+                string SettlAmmount = req.settlementAmount.amount;
+                string recAmmount = req.receivingAmount.amount;
+                //if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                //{
+                //    ammount = ammount + ".0";
+                //}
 
-                if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
-                {
-                    SettlAmmount = SettlAmmount + ".0";
-                }
+                //if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                //{
+                //    SettlAmmount = SettlAmmount + ".0";
+                //}
 
-                if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
-                {
-                    recAmmount = recAmmount + ".0";
-                }
+                //if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                //{
+                //    recAmmount = recAmmount + ".0";
+                //}
 
                 
                 string ConcatStr =
@@ -154,7 +155,7 @@ namespace Tincoff_Gate.Controllers
 
                 bool signVerificed = signature.VerifySignature(ConcatStr, req.platformSignature);
                 //test
-                signVerificed = true;
+                //signVerificed = true;
                 if (!signVerificed)
                 {
                     resp.transferState = new Models.CommonModels.TransferState();
@@ -227,6 +228,7 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState.errorCode = 205;
                 resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
                 resp.transferState.state = "INVALID";
+                
                 descript = ex.Message;
             }
             Logger logger = new Logger(_connectionString, _appSettings);

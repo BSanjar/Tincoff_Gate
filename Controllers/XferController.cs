@@ -40,18 +40,18 @@ namespace Tincoff_Gate.Controllers
             {
                 CheckReqXfer req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
                 
-                string ammount = req.paymentAmount.amount.ToString();
-                if (!(req.paymentAmount.amount.ToString().Contains(',')|| req.paymentAmount.amount.ToString().Contains('.')))
-                {
-                    ammount = ammount + ".0";
-                }
+                //string ammount = req.paymentAmount.amount.ToString();
+                //if (!(req.paymentAmount.amount.ToString().Contains(',')|| req.paymentAmount.amount.ToString().Contains('.')))
+                //{
+                //    ammount = ammount + ".0";
+                //}
                 
 
                 string ConcatStr =
                     req.originatorReferenceNumber +
                     req.originator.identification.value +
                     req.receiver.identification.value +
-                    ammount +
+                    req.paymentAmount.amount +
                     req.paymentAmount.currency +
                     req.receivingAmount.currency;
                 Signature signature = new Signature();
@@ -90,23 +90,23 @@ namespace Tincoff_Gate.Controllers
                
                 ConfirmReqXfer req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
 
-                string ammount = req.paymentAmount.amount.ToString().Replace(",",".");
-                string SettlAmmount = req.settlementAmount.amount.ToString().Replace(",", "."); 
-                string recAmmount = req.receivingAmount.amount.ToString().Replace(",", "."); 
-                if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
-                {
-                    ammount = ammount + ".0";
-                }
+                string ammount = req.paymentAmount.amount;
+                string SettlAmmount = req.settlementAmount.amount; 
+                string recAmmount = req.receivingAmount.amount; 
+                //if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                //{
+                //    ammount = ammount + ".0";
+                //}
 
-                if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
-                {
-                    SettlAmmount = SettlAmmount + ".0";
-                }
+                //if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                //{
+                //    SettlAmmount = SettlAmmount + ".0";
+                //}
 
-                if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
-                {
-                    recAmmount = recAmmount + ".0";
-                }
+                //if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                //{
+                //    recAmmount = recAmmount + ".0";
+                //}
 
                 string ConcatStr =
                     req.platformReferenceNumber +
@@ -204,7 +204,5 @@ namespace Tincoff_Gate.Controllers
 
             return resp;
         }
-
-
     }
 }

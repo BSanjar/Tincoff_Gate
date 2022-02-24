@@ -25,7 +25,9 @@
 
 
         //
-
+        public string proxyAddr { get; set; }
+        public string proxyLogin { get; set; }
+        public string proxyPassw { get; set; }
 
     }
 }

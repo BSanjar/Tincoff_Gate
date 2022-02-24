@@ -74,7 +74,7 @@ namespace Tincoff_Gate.Integration
                 var data = Encoding.UTF8.GetBytes(body);
                 //string addr = "https://146.120.245.16:7050/aggregator/v1/transactions/check";
 
-                //ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Ssl3 | SecurityProtocolType.Tls;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 |  SecurityProtocolType.Tls;
                 //ServicePointManager.ServerCertificateValidationCallback = (a, b, c, d) => true;
 
                 HttpWebRequest req = (HttpWebRequest)WebRequest.Create(addr);
@@ -84,12 +84,12 @@ namespace Tincoff_Gate.Integration
                 //string ProxyLogin = ConfigurationManager.AppSettings["ProxyLogin"];
                 //string ProxyPass = ConfigurationManager.AppSettings["ProxyPassword"];
 
-                //Uri newUri = new Uri(ProxyAddr);
+                Uri newUri = new Uri(_appSettings.Value.proxyAddr) ;
                 // Associate the newUri object to 'myProxy' object so that new myProxy settings can be set.
-                //myProxy.Address = newUri;
+                myProxy.Address = newUri;
                 // Create a NetworkCredential object and associate it with the 
                 // Proxy property of request object.
-               // myProxy.Credentials = new NetworkCredential(ProxyLogin, ProxyPass);
+                myProxy.Credentials = new NetworkCredential(_appSettings.Value.proxyLogin, _appSettings.Value.proxyPassw);
                 req.Proxy = myProxy;
 
 
@@ -223,8 +223,8 @@ namespace Tincoff_Gate.Integration
             {
                 //platformReferenceNumber = guid sender + guid platform
                 string guid = req.platformReferenceNumber.Substring(req.platformReferenceNumber.Count()/2, (req.platformReferenceNumber.Count()/2));
-                double summWithComiss = (double)(req.receivingAmount.amount * 100); //сумма с комиссией
-                double summ = (double)(req.receivingAmount.amount * 100);           //сумма без комиссии
+                double summWithComiss = (double)(Convert.ToDouble(req.receivingAmount.amount)* 100); //сумма с комиссией
+                double summ = (double)(Convert.ToDouble(req.receivingAmount.amount) * 100);           //сумма без комиссии
                 string date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "+0300";
                 string servId = _appSettings.Value.EsbPayAcc;
                 if (cr.cardFl == "1")
@@ -304,7 +304,7 @@ namespace Tincoff_Gate.Integration
                 resp.receiver.participant = new Models.CommonModels.Participant();
                 resp.receiver.participant.participantId = "";
                 resp.receivingAmount = new Models.CommonModels.Ammount();
-                resp.receivingAmount.amount = 0;
+                resp.receivingAmount.amount = "";
                 resp.receivingAmount.currency = "";
 
                 CheckResp re = SLCheckResponce(respSL);
