@@ -61,7 +61,7 @@ namespace Tincoff_Gate.Controllers
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.CheckXfer(req);
-                resp.platformReferenceNumber = req.originatorReferenceNumber;
+                resp.originatorReferenceNumber = req.originatorReferenceNumber;
             }
 
             catch (Exception ex)
@@ -89,7 +89,7 @@ namespace Tincoff_Gate.Controllers
             {
                
                 ConfirmReqXfer req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
-
+                req.checkDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
                 string ammount = req.paymentAmount.amount;
                 string SettlAmmount = req.settlementAmount.amount; 
                 string recAmmount = req.receivingAmount.amount; 
@@ -125,7 +125,7 @@ namespace Tincoff_Gate.Controllers
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.ConfirmXfer(req, _appSettings.Value.hostXref);
-                resp.platformReferenceNumber = req.platformReferenceNumber;
+                //resp.platformReferenceNumber = req.platformReferenceNumber;
             }
 
             catch (Exception ex)
@@ -183,7 +183,7 @@ namespace Tincoff_Gate.Controllers
             try
             {
                 RateReqXfer req = JsonConvert.DeserializeObject<RateReqXfer>(Convert.ToString(reqBody));
-
+                req.effectiveDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")+"Z";
                 Integration.Integration integration = new Integration.Integration(_appSettings);
 
                 //CheckReqXfer req = new CheckReqXfer();

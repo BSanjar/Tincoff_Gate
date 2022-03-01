@@ -18,7 +18,7 @@ namespace Tincoff_Gate.Models.ToXfer
         public Ammount feeAmount { get; set; }
         public Ammount settlementAmount { get; set; }
         public Ammount receivingAmount { get; set; }
-        public DateTime checkDate { get; set; }
+        public string checkDate { get; set; }
         public ConversionRateBuy conversionRateBuy { get; set; }
         public ConversionRateSell conversionRateSell { get; set; }
         public string comment { get; set; }

@@ -5,6 +5,8 @@ namespace Tincoff_Gate.Models.ToXfer
 {   
     public class CheckRespXfer
     {
+        public string originatorReferenceNumber { get; set; }
+        //
         public string platformReferenceNumber { get; set; }
         public Originator originator { get; set; }
         public Receiver receiver { get; set; }
