@@ -25,16 +25,18 @@ namespace Tincoff_Gate.Integration
         //private readonly ILogger<HomeController> _logger;
 
         private readonly IOptions<AppSettings> _appSettings;
+        private readonly IOptions<ConnectionStrings> _connectionString;
 
-        public Integration(IOptions<AppSettings> appSettings)
+        public Integration(IOptions<AppSettings> appSettings, IOptions<ConnectionStrings> connectionString)
         {
             _appSettings = appSettings;
+            _connectionString = connectionString;
         }
         public CheckRespXfer CheckXfer(CheckReqXfer checkReqXfer)
         {
                       string body = JsonConvert.SerializeObject(checkReqXfer);
                 string addr = _appSettings.Value.hostXref + "/transfer/check";
-                string response = QureyToXfer(body,addr);
+                string response = QureyToXfer(body,addr,"Check");
                 CheckRespXfer resp = new CheckRespXfer();
                 resp = JsonConvert.DeserializeObject<CheckRespXfer>(response);
                 return resp;
@@ -43,7 +45,7 @@ namespace Tincoff_Gate.Integration
         {
             string body = JsonConvert.SerializeObject(confirmReqXfer);
             addr = addr + "/transfer/confirm";
-            string response = QureyToXfer(body, addr);
+            string response = QureyToXfer(body, addr, "Confirm");
             ConfirmRespXfer resp = new ConfirmRespXfer();
             resp = JsonConvert.DeserializeObject<ConfirmRespXfer>(response);
             return resp;
@@ -52,7 +54,7 @@ namespace Tincoff_Gate.Integration
         {
             string body = JsonConvert.SerializeObject(ReqXfer);
             addr = addr + "/transfer/state";
-            string response = QureyToXfer(body, addr);
+            string response = QureyToXfer(body, addr, "State");
             StatusRespXfer resp = new StatusRespXfer();
             resp = JsonConvert.DeserializeObject<StatusRespXfer>(response);
             return resp;
@@ -62,13 +64,17 @@ namespace Tincoff_Gate.Integration
         {
             string body = JsonConvert.SerializeObject(ReqXfer);
             addr = addr + "/exchangerates";
-            string response = QureyToXfer(body, addr);
+            string response = QureyToXfer(body, addr, "Rate");
             RateRespXfer resp = new RateRespXfer();
             resp = JsonConvert.DeserializeObject<RateRespXfer>(response);
             return resp;
         }
-        private string QureyToXfer(string body, string addr)
+        private string QureyToXfer(string body, string addr, string func)
         {
+            Logger logger = new Logger(_connectionString, _appSettings);
+            string descript = "";
+            string status = "info";
+            string res = "";
             try
             {
                 var data = Encoding.UTF8.GetBytes(body);
@@ -106,7 +112,7 @@ namespace Tincoff_Gate.Integration
                 //req.Headers.Add("X-App-UUID", XAppUuid);
                 //req.Headers.Add("X-Request-Signature", sign);
 
-                string res = "";
+                
                 ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(delegate { return true; });
 
                 using (var stream = req.GetRequestStream())
@@ -116,19 +122,32 @@ namespace Tincoff_Gate.Integration
                 var response = (HttpWebResponse)req.GetResponse();
                 var responseString = new StreamReader(response.GetResponseStream(), Encoding.UTF8).ReadToEnd();
                 res = responseString.ToString();
+                descript = "Получен ответ";
+                
+               
                 return res;
             }
             catch (Exception ex)
             {
+                descript = ex.Message;
+                status = "error";
+                
                 throw new Exception("Не удалось выполнить запрос к "+addr+", ошибка: " + ex.Message);
+            }
+            finally
+            {
+                logger.InsertLog(new Log { id = "", Descript = descript, EventName = "HbkGate->Xfer/"+func, Status = status, request = body, response = res });
             }
         }
 
-        public string QureyToSL(string body)
+        public string QureyToSL(string body, string func)
         {
             string certName = Directory.GetCurrentDirectory();
             certName = certName + "\\CertSL\\"+_appSettings.Value.certNameSL;
-          
+            Logger logger = new Logger(_connectionString, _appSettings);
+            string descript = "";
+            string status = "info";
+            string res = "";
             try
             {
                 var data = Encoding.UTF8.GetBytes(body);
@@ -146,7 +165,7 @@ namespace Tincoff_Gate.Integration
                 req.Proxy = new WebProxy() { UseDefaultCredentials = true };
                 req.ContentType = "text/xml";
                 req.ContentLength = data.Length;
-                string res = "";
+              
                 ServicePointManager.ServerCertificateValidationCallback = new RemoteCertificateValidationCallback(delegate { return true; });
 
                 using (var stream = req.GetRequestStream())
@@ -159,18 +178,26 @@ namespace Tincoff_Gate.Integration
                
                 XmlDocument xdoc = new XmlDocument();
                 xdoc.LoadXml(res);;
+                descript = "Получен ответ";
+               
                 return xdoc.InnerXml;
             }
             catch (Exception ex)
             {
+                descript = ex.Message;
+                status = "error";
                 throw new Exception("Не удалось выполнить запрос к " + _appSettings.Value.hostSL + ", ошибка: " + ex.Message);
+            }
+            finally
+            {
+                logger.InsertLog(new Log { id = "", Descript = descript, EventName = "HbkGate->PayLogic/"+func, Status = status, request = body, response = res });
             }
         }
 
         public CheckRespBank CheckBank (CheckReqBank req)
         {
             string body = CreateCheckPaymentQuery(req.receiver.identification.value); 
-            string response = QureyToSL(body);
+            string response = QureyToSL(body,"Check");
 
             CheckRespBank resp = new CheckRespBank();
             resp = CreateCheckPaymentResponse(response, req);
@@ -181,13 +208,13 @@ namespace Tincoff_Gate.Integration
         {
 
             string checkBody = CreateCheckPaymentQuery(req.receiver.identification.value);
-            string responseCheck = QureyToSL(checkBody);
+            string responseCheck = QureyToSL(checkBody,"Check");
 
 
             CheckResp cr = SLCheckResponce(responseCheck);
 
             string body = CreatePayPaymentQuery(req,cr);
-            string response = QureyToSL(body);
+            string response = QureyToSL(body,"Pay");
             ConfirmRespBank resp = new ConfirmRespBank();
 
             resp = CreateConfirmPaymentResponse(response);
@@ -196,7 +223,7 @@ namespace Tincoff_Gate.Integration
         public StatusRespBank StatusBank(StatusReqBank req)
         {
             string body = CreateStatusPaymentQuery(req);
-            string response = QureyToSL(body);
+            string response = QureyToSL(body,"State");
             StatusRespBank resp = new StatusRespBank();
             resp = CreateStatusPaymentResponse(response);
             return resp;
@@ -223,8 +250,8 @@ namespace Tincoff_Gate.Integration
             {
                 //platformReferenceNumber = guid sender + guid platform
                 string guid = req.platformReferenceNumber.Substring(req.platformReferenceNumber.Count()/2, (req.platformReferenceNumber.Count()/2));
-                double summWithComiss = (double)(Convert.ToDouble(req.receivingAmount.amount)* 100); //сумма с комиссией
-                double summ = (double)(Convert.ToDouble(req.receivingAmount.amount) * 100);           //сумма без комиссии
+                double summWithComiss = Convert.ToDouble(req.receivingAmount.amount.Replace('.',','))* 100; //сумма с комиссией
+                double summ = Convert.ToDouble(req.receivingAmount.amount.Replace('.', ',')) * 100;           //сумма без комиссии
                 string date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "+0300";
                 string servId = _appSettings.Value.EsbPayAcc;
                 if (cr.cardFl == "1")
@@ -248,7 +275,10 @@ namespace Tincoff_Gate.Integration
                     "<attribute name=\"cliAccProc\" value=\"" + cr.processing + "\" />\n        " +
                     "<attribute name=\"cliAccName\" value=\"" + cr.name + "\" />\n        " +
                     "<attribute name=\"cliAccCardFl\" value=\"" + cr.cardFl + "\" />\n        " +
-                    "<attribute name=\"description\" value=\"" + req.comment + "\" />\n        " +
+                    "<attribute name=\"description\" value=\"Пополнение счета от "+req.originator.identification.value+"\" />\n        " +
+                    "<attribute name=\"origNum\" value=\"" + req.originator.identification.value + "\" />\n        " +
+                    "<attribute name=\"origName\" value=\"" + req.originator.fullName + "\" />\n        " +
+                    "<attribute name=\"origBank\" value=\"" + req.originator.participant.participantId + "\" />\n        " +
                     "<attribute name=\"cliAccInn\" value=\"\" />   " +
                     "</opayment>\n" +
                     "</request>";
@@ -368,19 +398,19 @@ namespace Tincoff_Gate.Integration
                 string state = resultAttributes.GetNamedItem("state").InnerText;
                
                 resp.transferState = new Models.CommonModels.TransferState();
-                resp.transferState.errorCode = 0;
-                resp.transferState.errorMessage = "0";
+                resp.transferState.errorCode = 200;
+                resp.transferState.errorMessage = "Запрос подтверждения перевода выполнен без ошибок";
                 resp.transferState.state = "0";
-                if (state == "60"||  state == "20")
+                if (state == "60"||  state == "20" || state == "40")
                 {
                     resp.transferState.errorCode = 200;
-                    resp.transferState.errorMessage = "Запрос подтверждения перевода выполнен без ошибок";
+                    //resp.transferState.errorMessage = "Запрос подтверждения перевода выполнен без ошибок";
                     resp.transferState.state = "CONFIRM_PENDING";
                 }
                 else
                 {
-                    resp.transferState.errorCode = 205;
-                    resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
+                    //resp.transferState.errorCode = 205;
+                    //resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
                     resp.transferState.state = "INVALID";
                 }
                 return resp;
@@ -411,27 +441,31 @@ namespace Tincoff_Gate.Integration
                 string substate = resultAttributes.GetNamedItem("substate").InnerText;
                 string code = resultAttributes.GetNamedItem("code").InnerText;
                 string final = resultAttributes.GetNamedItem("final").InnerText;
-                string trans = resultAttributes.GetNamedItem("trans").InnerText;
+                //string trans = resultAttributes.GetNamedItem("trans").InnerText;
 
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = 200;
-                resp.transferState.errorMessage = "Запрос подтверждения перевода выполнен без ошибок";
+                resp.transferState.errorMessage = "Перевод в процессе подтверждения, ожидается ответ банка Получателя";
                 resp.transferState.state = "0";
 
 
                 if (state == "60")
                 {
                     resp.transferState.state = "CONFIRMED";
+                    //resp.transferState.errorMessage = "Перевод подтвержден и успешно завершен";
                 }
+              
                 else
                 {
                     if (final == "1")
                     {
                         resp.transferState.state = "INVALID";
+                        //resp.transferState.errorMessage = "Перевод не проведен по причине ошибки";
                     }
                     else
                     {
-                        resp.transferState.state = resp.transferState.state = "INVALID";
+                        resp.transferState.state = "CONFIRM_PENDING";
+                        //resp.transferState.errorMessage = "Перевод в процессе подтверждения, ожидается ответ банка Получателя";
                     }
                 }
                 return resp;

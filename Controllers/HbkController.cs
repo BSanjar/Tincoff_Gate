@@ -35,14 +35,17 @@ namespace Tincoff_Gate.Controllers
         [Route("check")]
         public CheckRespBank Check()
         {
-            
+            Logger logger = new Logger(_connectionString, _appSettings);
             CheckRespBank resp = new CheckRespBank();
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
             string descript = "успех";
+            string id = "";
+            
             try
             {
                 CheckReqBank req = JsonConvert.DeserializeObject<CheckReqBank>(Convert.ToString(reqBody));
+                id = req.platformReferenceNumber;
                 string ammount = req.paymentAmount.amount;
                 string SettlAmmount = req.settlementAmount.amount?.ToString().Replace(",", ".");
                 string recAmmount = req.receivingAmount.amount?.ToString().Replace(",", ".");
@@ -87,13 +90,14 @@ namespace Tincoff_Gate.Controllers
                 }
                 else
                 {
-                    Integration.Integration integr = new Integration.Integration(_appSettings);
+                    Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
                     resp = integr.CheckBank(req);
                 }
                
             }
             catch (Exception ex)
             {
+                id = "";
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = 103;
                 resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при проверке";
@@ -102,8 +106,8 @@ namespace Tincoff_Gate.Controllers
                 descript = ex.Message;
                 status = "error";
             }
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = descript, EventName = "Hbk/confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Xfer->HbKGate/Check", Status = status,request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
@@ -118,10 +122,12 @@ namespace Tincoff_Gate.Controllers
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
             string descript = "успех";
+            string id = "";
+            Logger logger = new Logger(_connectionString, _appSettings);
             try
             {
                 ConfirmReqBank req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
-
+                id = req.platformReferenceNumber;
                 string ammount = req.paymentAmount.amount;
                 string SettlAmmount = req.settlementAmount.amount;
                 string recAmmount = req.receivingAmount.amount;
@@ -168,8 +174,10 @@ namespace Tincoff_Gate.Controllers
                 }
                 else
                 {
-                    Integration.Integration integr = new Integration.Integration(_appSettings);
+                    Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
                     resp = integr.ConfirmBank(req);
+                    resp.platformReferenceNumber = req.platformReferenceNumber;
+                    
                 }
 
             }
@@ -183,15 +191,14 @@ namespace Tincoff_Gate.Controllers
                 descript = ex.Message;
             }
 
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = descript, EventName = "Hbk/confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
-
+            
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Xfer->HabkGate/Confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
 
         [HttpPost]
-        [Route("status")]
+        [Route("state")]
         public StatusRespBank Status()
         {
 
@@ -199,12 +206,16 @@ namespace Tincoff_Gate.Controllers
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
             string descript = "успех";
+            string id = "";
+            Logger logger = new Logger(_connectionString, _appSettings);
             try
             {
 
                 StatusReqBank req = JsonConvert.DeserializeObject<StatusReqBank>(Convert.ToString(reqBody));
+                
                 string ConcatStr =
                     req.platformReferenceNumber;
+                id = req.platformReferenceNumber;
                 //Signature signature = new Signature();
 
                 //bool signVerificed = signature.VerifySignature(reqBody, req.platformSignature);
@@ -218,9 +229,11 @@ namespace Tincoff_Gate.Controllers
 
                 //    return resp;
                 //}
-                Integration.Integration integr = new Integration.Integration(_appSettings);
+                Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
                 resp = integr.StatusBank(req);
-
+                
+                resp.receivedDate =  DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
+                resp.platformReferenceNumber = req.platformReferenceNumber;
             }
             catch (Exception ex)
             {
@@ -228,11 +241,11 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState.errorCode = 205;
                 resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
                 resp.transferState.state = "INVALID";
-                
+                resp.receivedDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
+                //resp.platformReferenceNumber = req.platformReferenceNumber;
                 descript = ex.Message;
             }
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = descript, EventName = "Hbk/confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Xfer->HabkGate/State", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }

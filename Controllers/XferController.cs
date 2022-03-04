@@ -33,20 +33,16 @@ namespace Tincoff_Gate.Controllers
         [Route("check")]
         public CheckRespXfer Check()
         {
+            Logger logger = new Logger(_connectionString, _appSettings);
             CheckRespXfer resp = new CheckRespXfer();
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
+            string descript = "успех";
+            string id = "";
             try
             {
                 CheckReqXfer req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
-                
-                //string ammount = req.paymentAmount.amount.ToString();
-                //if (!(req.paymentAmount.amount.ToString().Contains(',')|| req.paymentAmount.amount.ToString().Contains('.')))
-                //{
-                //    ammount = ammount + ".0";
-                //}
-                
-
+                id = req.originatorReferenceNumber;
                 string ConcatStr =
                     req.originatorReferenceNumber +
                     req.originator.identification.value +
@@ -57,7 +53,7 @@ namespace Tincoff_Gate.Controllers
                 Signature signature = new Signature();
                 string sign = signature.SignData(ConcatStr);
                 req.originatorSignature = sign;
-                Integration.Integration integration = new Integration.Integration(_appSettings);
+                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.CheckXfer(req);
@@ -70,11 +66,10 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось выполнить проверку, ошибка: " + ex.Message;
                 status = "error";
+                descript = ex.Message;
             }
-
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript=resp.transferState.errorMessage, EventName= "Xfer/check",Status= status, request = reqBody, response = JsonConvert.SerializeObject(resp)});
-
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Hbk->Xfer/Check", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+          
             return resp;
         }
 
@@ -85,10 +80,14 @@ namespace Tincoff_Gate.Controllers
             ConfirmRespXfer resp = new ConfirmRespXfer();
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
+            string descript = "успех";
+            string id = "";
+            Logger logger = new Logger(_connectionString, _appSettings);
             try
             {
                
                 ConfirmReqXfer req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
+                id = req.platformReferenceNumber;
                 req.checkDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
                 string ammount = req.paymentAmount.amount;
                 string SettlAmmount = req.settlementAmount.amount; 
@@ -121,7 +120,7 @@ namespace Tincoff_Gate.Controllers
                 Signature signature = new Signature();
                 string sign = signature.SignData(ConcatStr);
                 req.originatorSignature = sign;
-                Integration.Integration integration = new Integration.Integration(_appSettings);
+                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.ConfirmXfer(req, _appSettings.Value.hostXref);
@@ -134,9 +133,9 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось провести платеж, ошибка: " + ex.Message;
                 status = "error";
+                descript = ex.Message;
             }
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = resp.transferState.errorMessage, EventName = "Xfer/confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Hbk->Xfer/Confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
@@ -148,15 +147,19 @@ namespace Tincoff_Gate.Controllers
             StatusRespXfer resp = new StatusRespXfer();
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
+            string descript = "успех";
+            string id = "";
+            Logger logger = new Logger(_connectionString, _appSettings);
             try
             {
                 StatusReqXfer req = JsonConvert.DeserializeObject<StatusReqXfer>(Convert.ToString(reqBody));
-                resp.platformReferenceNumber = req.platformReferenceNumber;
-                Integration.Integration integration = new Integration.Integration(_appSettings);
+                id = req.originatorReferenceNumber;
+                resp.platformReferenceNumber = req.originatorReferenceNumber;
+                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.StatusXfer(req, _appSettings.Value.hostXref);
-                resp.platformReferenceNumber = req.platformReferenceNumber;
+                resp.platformReferenceNumber = req.originatorReferenceNumber;
             }
 
             catch (Exception ex)
@@ -165,9 +168,9 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось провести платеж, ошибка: " + ex.Message;
                 status = "error";
+                descript = ex.Message;
             }
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = resp.platformReferenceNumber, Descript = resp.transferState.errorMessage, EventName = "Xfer/state", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Hbk->Xfer/State", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
@@ -180,11 +183,14 @@ namespace Tincoff_Gate.Controllers
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
             string descript = "Успех";
+            Logger logger = new Logger(_connectionString, _appSettings);
             try
             {
                 RateReqXfer req = JsonConvert.DeserializeObject<RateReqXfer>(Convert.ToString(reqBody));
+                
+
                 req.effectiveDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss")+"Z";
-                Integration.Integration integration = new Integration.Integration(_appSettings);
+                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
                 //CheckReqXfer req = new CheckReqXfer();
                 resp = integration.RateXfer(req, _appSettings.Value.hostXref);
@@ -199,8 +205,7 @@ namespace Tincoff_Gate.Controllers
                 resp.errCode = "-1";
                 resp.errMessage = ex.Message;
             }
-            Logger logger = new Logger(_connectionString, _appSettings);
-            logger.InsertLog(new Log { id = "", Descript = descript, EventName = "Xfer/rate", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = "", Descript = descript, EventName = "Hbk->Xfer/Rate", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }

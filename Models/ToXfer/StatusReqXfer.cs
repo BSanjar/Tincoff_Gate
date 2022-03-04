@@ -2,6 +2,6 @@
 {
     public class StatusReqXfer
     {
-        public string platformReferenceNumber { get; set; }
+        public string originatorReferenceNumber { get; set; }
     }
 }
