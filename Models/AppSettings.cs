@@ -5,6 +5,9 @@
         public string Secret { get; set; }
         public string hostXref { get; set; }
         public string hostSL { get; set; }
+        public string hostEsb { get; set; }
+        public string EsbLogin { get; set; }
+        public string EsbPassw { get; set; }
         public string pointSL { get; set; }
         public string certNameSL { get; set; }
         public string certPasswordSL { get; set; }

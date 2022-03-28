@@ -68,7 +68,7 @@ namespace Tincoff_Gate.Controllers
                 status = "error";
                 descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Hbk->Xfer/Check", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HabkGate/Check", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
           
             return resp;
         }
@@ -135,7 +135,7 @@ namespace Tincoff_Gate.Controllers
                 status = "error";
                 descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Hbk->Xfer/Confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HabkGate/Confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
@@ -170,7 +170,7 @@ namespace Tincoff_Gate.Controllers
                 status = "error";
                 descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Hbk->Xfer/State", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HabkGate/State", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
@@ -205,7 +205,7 @@ namespace Tincoff_Gate.Controllers
                 resp.errCode = "-1";
                 resp.errMessage = ex.Message;
             }
-            logger.InsertLog(new Log { id = "", Descript = descript, EventName = "Hbk->Xfer/Rate", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.InsertLog(new Log { id = "", Descript = descript, EventName = "PayLogic->HabkGate/Rate", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }

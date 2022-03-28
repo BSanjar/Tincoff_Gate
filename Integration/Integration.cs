@@ -32,6 +32,70 @@ namespace Tincoff_Gate.Integration
             _appSettings = appSettings;
             _connectionString = connectionString;
         }
+        public string GateWay(string body)
+        {
+            
+            string addr = _appSettings.Value.hostEsb ;
+            string response = SendRequestEsb(body, addr);
+            return response;
+        }
+
+
+        private string SendRequestEsb(string request, string addr)
+        {
+            Logger logger = new Logger(_connectionString, _appSettings);
+            string descript = "";
+            string status = "info";
+            string resp = "";
+            try
+            {
+              
+                ServicePointManager.Expect100Continue = true;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
+                addr = addr.Trim('/').Trim('\\'); // в конце адреса удалить слэш, если он имеется
+                ServicePointManager.ServerCertificateValidationCallback = ((senderr, certificate, chain, sslPolicyErrors) => true);
+                WebRequest _request = HttpWebRequest.Create(addr);
+
+                //метод POST/GET и.т.д
+                _request.Method = "POST";
+                _request.ContentType = "application/json";
+                //_request.ContentLength = body.Length;
+
+                //добавляю загаловки сервиса
+
+                var TextBytes = Encoding.UTF8.GetBytes(_appSettings.Value.EsbLogin + ":" + _appSettings.Value.EsbPassw);
+                string auth = "Basic " + Convert.ToBase64String(TextBytes);
+                
+                //_request.Headers.Add("Content-Type", "application/xml");
+                _request.Headers.Add("Authorization", auth);
+
+
+                // пишем тело
+                StreamWriter _streamWriter = new StreamWriter(_request.GetRequestStream());
+                _streamWriter.Write(request);
+                _streamWriter.Close();
+                // читаем тело
+                WebResponse _response = _request.GetResponse();
+
+                StreamReader _streamReader = new StreamReader(_response.GetResponseStream());
+                //string _result = _streamReader.ReadToEnd(); // переменная в которую пишется результат (ответ) сервиса
+                resp = _streamReader.ReadToEnd();
+
+            }
+            catch (Exception ex)
+            {
+                descript = ex.Message;
+                status = "error";
+                throw new Exception("Не удалось выполнить запрос к ESB, ошибка: " + ex.Message);
+            }
+            finally
+            {
+                logger.InsertLog(new Log { id = "", Descript = descript, EventName = "HbkGate->Esb", Status = status, request = request, response = resp });
+            }
+            return resp;
+        }
+
+
         public CheckRespXfer CheckXfer(CheckReqXfer checkReqXfer)
         {
                       string body = JsonConvert.SerializeObject(checkReqXfer);
@@ -254,6 +318,13 @@ namespace Tincoff_Gate.Integration
                 double summ = Convert.ToDouble(req.receivingAmount.amount.Replace('.', ',')) * 100;           //сумма без комиссии
                 string date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "+0300";
                 string servId = _appSettings.Value.EsbPayAcc;
+                string origAddr = "";
+                if (req.originator.additionalIdentification!=null)
+                foreach (var i in req.originator.additionalIdentification)
+                {
+                    origAddr+= "<attribute name=\"" + i.type + "\" value=\"" + i.value + "\" />\n        ";
+                }
+
                 if (cr.cardFl == "1")
                 {
                     servId = _appSettings.Value.EsbPayCard;
@@ -279,6 +350,17 @@ namespace Tincoff_Gate.Integration
                     "<attribute name=\"origNum\" value=\"" + req.originator.identification.value + "\" />\n        " +
                     "<attribute name=\"origName\" value=\"" + req.originator.fullName + "\" />\n        " +
                     "<attribute name=\"origBank\" value=\"" + req.originator.participant.participantId + "\" />\n        " +
+                        origAddr +
+                    "<attribute name=\"payAmmount\" value=\"" + req.paymentAmount.amount + "\" />\n        " +
+                    "<attribute name=\"payAmmountCurr\" value=\"" + req.paymentAmount.currency + "\" />\n        " +
+                    "<attribute name=\"displayFeeAmount\" value=\"" + req.displayFeeAmount.amount + "\" />\n        " +
+                    "<attribute name=\"displayFeeAmountCurr\" value=\"" + req.displayFeeAmount.currency + "\" />\n        " +
+                    "<attribute name=\"feeAmount\" value=\"" + req.feeAmount.amount + "\" />\n        " +
+                    "<attribute name=\"feeAmountCurr\" value=\"" + req.feeAmount.currency + "\" />\n        " +
+                    "<attribute name=\"settlementAmount\" value=\"" + req.settlementAmount.amount + "\" />\n        " +
+                    "<attribute name=\"settlementAmountCurr\" value=\"" + req.settlementAmount.currency + "\" />\n        " +
+                    "<attribute name=\"rate\" value=\"" + req.conversionRateSell.rate + "\" />\n        " +
+                    "<attribute name=\"baseRate\" value=\"" + req.conversionRateSell.baseRate + "\" />\n        " +
                     "<attribute name=\"cliAccInn\" value=\"\" />   " +
                     "</opayment>\n" +
                     "</request>";
@@ -396,6 +478,7 @@ namespace Tincoff_Gate.Integration
                 XmlNode xnode = xRoot.FirstChild;
                 XmlAttributeCollection resultAttributes = xnode.Attributes;
                 string state = resultAttributes.GetNamedItem("state").InnerText;
+                string substate = resultAttributes.GetNamedItem("substate").InnerText;
                
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = 200;
@@ -409,7 +492,10 @@ namespace Tincoff_Gate.Integration
                 }
                 else
                 {
-                    //resp.transferState.errorCode = 205;
+                    if(substate == "1" || substate == "2" || substate == "3")
+                    resp.transferState.errorCode = 207;
+                    else
+                        resp.transferState.errorCode = 205;
                     //resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
                     resp.transferState.state = "INVALID";
                 }
@@ -452,14 +538,20 @@ namespace Tincoff_Gate.Integration
                 if (state == "60")
                 {
                     resp.transferState.state = "CONFIRMED";
-                    //resp.transferState.errorMessage = "Перевод подтвержден и успешно завершен";
+                    resp.transferState.errorMessage = "Перевод подтвержден и успешно завершен";
                 }
               
                 else
                 {
                     if (final == "1")
                     {
+                        if (substate == "1" || substate == "2" || substate == "3")
+                            resp.transferState.errorCode = 207;
+                        else
+                            resp.transferState.errorCode = 205;
+                        resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
                         resp.transferState.state = "INVALID";
+                       
                         //resp.transferState.errorMessage = "Перевод не проведен по причине ошибки";
                     }
                     else
