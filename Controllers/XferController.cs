@@ -36,28 +36,122 @@ namespace Tincoff_Gate.Controllers
             Logger logger = new Logger(_connectionString, _appSettings);
             CheckRespXfer resp = new CheckRespXfer();
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
-            string status = "info";
+            string status = "CHECKED";
             string descript = "успех";
+            string colvirId = "";
             string id = "";
+            string clientColvirId = "";
+            CheckReqXfer req = new CheckReqXfer();
             try
             {
-                CheckReqXfer req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
-                id = req.originatorReferenceNumber;
-                string ConcatStr =
-                    req.originatorReferenceNumber +
-                    req.originator.identification.value +
-                    req.receiver.identification.value +
-                    req.paymentAmount.amount +
-                    req.paymentAmount.currency +
-                    req.receivingAmount.currency;
-                Signature signature = new Signature();
-                string sign = signature.SignData(ConcatStr);
-                req.originatorSignature = sign;
-                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
+                req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
 
-                //CheckReqXfer req = new CheckReqXfer();
-                resp = integration.CheckXfer(req);
-                resp.originatorReferenceNumber = req.originatorReferenceNumber;
+                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
+                colvirId = req.originatorSignature; //в этой поле возвращается код клиента в колвире, дальше в этой поле передаем подпись
+
+                Limit limit = logger.GetLimit(colvirId);
+                if (Convert.ToDouble(_appSettings.Value.sumTrnDay)==0|| Convert.ToDouble(_appSettings.Value.sumTrnDay) >= Convert.ToDouble(limit.sumTrnDay) + Convert.ToDouble(req.paymentAmount.amount.Replace('.', ',')))
+                {
+                    if (Convert.ToDouble(_appSettings.Value.sumTrnMonth) == 0 || Convert.ToDouble(_appSettings.Value.sumTrnMonth) >= Convert.ToDouble(limit.sumTrnMonth) + Convert.ToDouble(req.paymentAmount.amount.Replace('.', ',')))
+                    {
+                        if (Convert.ToDouble(_appSettings.Value.countTrnDay) == 0 || Convert.ToDouble(_appSettings.Value.countTrnDay) >= Convert.ToDouble(limit.countTrnDay) + 1)
+                        {
+                            string amlResult = integration.CheckAml(req.originator.fullName, req.originatorReferenceNumber);
+                            if (amlResult == "0" || amlResult == "3")
+                            {
+
+                                id = req.originatorReferenceNumber;
+                                string ConcatStr =
+                                    req.originatorReferenceNumber +
+                                    req.originator.identification.value +
+                                    req.receiver.identification.value +
+                                    req.paymentAmount.amount +
+                                    req.paymentAmount.currency +
+                                    req.receivingAmount.currency;
+                                Signature signature = new Signature();
+                                string sign = signature.SignData(ConcatStr);
+                                req.originatorSignature = sign;
+
+                                req.originator.nationality = GetNationISO(req.originator.nationality);
+
+
+
+                                //CheckReqXfer req = new CheckReqXfer();
+                                resp = integration.CheckXfer(req);
+
+                                //замена точки на запятой
+                                if (resp != null)
+                                {
+                                    string amlResult2 = integration.CheckAml2(resp.receiver.displayName, req.originatorReferenceNumber);
+                                    if (amlResult == "2" || amlResult == "-1")
+                                    {
+                                        resp.transferState = new Models.CommonModels.TransferState();
+                                        resp.transferState.errorCode = -1;
+                                        resp.transferState.errorMessage = "Получатель не прошел проверку по АМЛ";
+                                        status = "CHECK_PENDING";
+                                        descript = "Получатель не прошел проверку по АМЛ";
+                                    }
+
+
+                                    //if(resp.paymentAmount!=null && resp.paymentAmount.amount != null)
+                                    //    resp.paymentAmount.amount = resp.paymentAmount.amount.Replace('.', ',');
+                                    //if (resp.receivingAmount != null && resp.receivingAmount.amount != null)
+                                    //    resp.receivingAmount.amount = resp.receivingAmount.amount.Replace('.', ',');
+                                    //if (resp.conversionRateBuy != null && resp.conversionRateBuy.baseRate != null)
+                                    //{
+                                    //    resp.conversionRateBuy.baseRate = resp.conversionRateBuy.baseRate.Replace('.', ',');
+                                    //}
+                                    //if (resp.conversionRateBuy != null && resp.conversionRateBuy.rate != null)
+                                    //{
+                                    //    resp.conversionRateBuy.rate = resp.conversionRateBuy.rate.Replace('.', ',');
+                                    //}
+                                    //if (resp.feeAmount != null && resp.feeAmount.amount != null )
+                                    //    resp.feeAmount.amount = resp.feeAmount.amount.Replace('.', ',');
+                                    //if (resp.displayFeeAmount != null && resp.displayFeeAmount.amount != null )
+                                    //    resp.displayFeeAmount.amount = resp.displayFeeAmount.amount.Replace('.', ',');
+
+
+                                    resp.originatorReferenceNumber = req.originatorReferenceNumber;
+                                }
+                            }
+                            else
+                            {
+                                resp.transferState = new Models.CommonModels.TransferState();
+                                resp.transferState.errorCode = -1;
+                                resp.transferState.errorMessage = "Не прошел проверку по АМЛ";
+                                status = "CHECK_PENDING";
+                                descript = "Не прошел проверку по АМЛ";
+                            }
+
+
+                        }
+                        else
+                        {
+                            resp.transferState = new Models.CommonModels.TransferState();
+                            resp.transferState.errorCode = -1;
+                            resp.transferState.errorMessage = "Исчерпан лимит по количеству транзакций за день";
+                            status = "CHECK_PENDING";
+                            descript = "Исчерпан лимит по количеству транзакций за день";
+                        }
+                    }
+                    else
+                    {
+                        resp.transferState = new Models.CommonModels.TransferState();
+                        resp.transferState.errorCode = -1;
+                        resp.transferState.errorMessage = "Исчерпан лимит по сумме транзакций за месяц";
+                        status = "CHECK_PENDING";
+                        descript = "Исчерпан лимит по сумме транзакций за месяц";
+                    }
+                }
+                else
+                {
+                    resp.transferState = new Models.CommonModels.TransferState();
+                    resp.transferState.errorCode = -1;
+                    resp.transferState.errorMessage = "Исчерпан лимит по сумме транзакций за день";
+                    status = "CHECK_PENDING";
+                    descript = "Исчерпан лимит по сумме транзакций за день";
+                }
+
             }
 
             catch (Exception ex)
@@ -65,10 +159,21 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось выполнить проверку, ошибка: " + ex.Message;
-                status = "error";
+                status = "CHECK_PENDING";
                 descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HabkGate/Check", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.checkLog(new Log { id = Guid.NewGuid().ToString(), 
+                                      comment = descript, 
+                                      state = resp.transferState.state, 
+                                      checkDate = DateTime.Now,
+                checkRequest = reqBody, 
+                                      checkResponse = JsonConvert.SerializeObject(resp),
+                                      idCheck = req.originatorReferenceNumber,
+                                      idPlatform = resp.platformReferenceNumber,
+                                      originatorid = colvirId,
+                                      originatorBank = _appSettings.Value.participantId,
+                                      originatorSumm = Convert.ToDouble(req.paymentAmount.amount.Replace('.',','))           
+            });
           
             return resp;
         }
@@ -79,15 +184,14 @@ namespace Tincoff_Gate.Controllers
         {
             ConfirmRespXfer resp = new ConfirmRespXfer();
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
-            string status = "info";
-            string descript = "успех";
-            string id = "";
             Logger logger = new Logger(_connectionString, _appSettings);
+            ConfirmReqXfer req = new ConfirmReqXfer();
             try
             {
                
-                ConfirmReqXfer req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
-                id = req.platformReferenceNumber;
+                req = JsonConvert.DeserializeObject<ConfirmReqXfer>(Convert.ToString(reqBody));
+               
+
                 req.checkDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
                 string ammount = req.paymentAmount.amount;
                 string SettlAmmount = req.settlementAmount.amount; 
@@ -120,6 +224,9 @@ namespace Tincoff_Gate.Controllers
                 Signature signature = new Signature();
                 string sign = signature.SignData(ConcatStr);
                 req.originatorSignature = sign;
+
+                req.originator.nationality = GetNationISO(req.originator.nationality);
+
                 Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
                 //CheckReqXfer req = new CheckReqXfer();
@@ -132,13 +239,14 @@ namespace Tincoff_Gate.Controllers
                 resp.transferState = new Models.CommonModels.TransferState();
                 resp.transferState.errorCode = -1;
                 resp.transferState.errorMessage = "Не удалось провести платеж, ошибка: " + ex.Message;
-                status = "error";
-                descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HabkGate/Confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.payLog(new Log { idPlatform = req.platformReferenceNumber, state = resp.transferState.state, comment = resp.transferState.errorMessage, payRequest = reqBody, payResponse = JsonConvert.SerializeObject(resp), payDate = DateTime.Now });
 
             return resp;
         }
+
+
+
 
         [HttpPost]
         [Route("state")]
@@ -150,9 +258,10 @@ namespace Tincoff_Gate.Controllers
             string descript = "успех";
             string id = "";
             Logger logger = new Logger(_connectionString, _appSettings);
+            StatusReqXfer req = new StatusReqXfer();
             try
             {
-                StatusReqXfer req = JsonConvert.DeserializeObject<StatusReqXfer>(Convert.ToString(reqBody));
+                req = JsonConvert.DeserializeObject<StatusReqXfer>(Convert.ToString(reqBody));
                 id = req.originatorReferenceNumber;
                 resp.platformReferenceNumber = req.originatorReferenceNumber;
                 Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
@@ -170,7 +279,11 @@ namespace Tincoff_Gate.Controllers
                 status = "error";
                 descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HabkGate/State", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.StateLog(new Log { idPlatform = req.originatorReferenceNumber, 
+                
+                stateDate = DateTime.Now,
+                stateRequest = reqBody,
+                stateResponse = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
@@ -205,9 +318,49 @@ namespace Tincoff_Gate.Controllers
                 resp.errCode = "-1";
                 resp.errMessage = ex.Message;
             }
-            logger.InsertLog(new Log { id = "", Descript = descript, EventName = "PayLogic->HabkGate/Rate", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
             return resp;
         }
+
+        public string GetNationISO(string nationality)
+        {
+            string natIso = "KGZ";
+            try
+            {
+                string nat = nationality.Substring(0, 3).ToLower();
+                
+                switch (nat)
+                {
+                    case "рус":
+                        natIso = "RUS";
+                        break;
+                    case "кыр":
+                        natIso = "KGZ";
+                        break;
+                    case "каз":
+                        natIso = "KAZ";
+                        break;
+                    case "укр":
+                        natIso = "UKR";
+                        break;
+                    case "анг":
+                        natIso = "AIA";
+                        break;
+                    default:
+                        natIso = "KGZ";
+                        break;
+
+                }
+                return natIso;
+            }
+            catch
+            {
+                return natIso;
+            }
+            
+        }
+
+      
+
     }
 }

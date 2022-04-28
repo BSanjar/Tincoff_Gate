@@ -9,7 +9,7 @@ namespace Tincoff_Gate.Models.CommonModels
     {
         public string originatorCurrency { get; set; }
         public string settlementCurrency { get; set; }
-        public double rate { get; set; }
-        public double baseRate { get; set; }
+        public string rate { get; set; }
+        public string baseRate { get; set; }
     }
 }

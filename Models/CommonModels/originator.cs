@@ -10,6 +10,7 @@ namespace Tincoff_Gate.Models.CommonModels
         public Identification identification { get; set; }
         public Participant participant { get; set; }
         public string fullName { get; set; }
+        public string nationality { get; set; }
         public List<Identification> additionalIdentification { get; set; }
     }
 }

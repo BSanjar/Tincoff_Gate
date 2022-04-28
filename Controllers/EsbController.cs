@@ -4,14 +4,11 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Threading.Tasks;
 using Tincoff_Gate.Integration;
 using Tincoff_Gate.Models;
-using Tincoff_Gate.Models.ToXfer;
 
 namespace Tincoff_Gate.Controllers
 {
@@ -41,7 +38,7 @@ namespace Tincoff_Gate.Controllers
             string reqBody = new StreamReader(HttpContext.Request.Body).ReadToEnd();
             string status = "info";
             string descript = "успех";
-            string id = "";
+            string idPlatform = "";
             string content = "";
             try
             {
@@ -69,6 +66,7 @@ namespace Tincoff_Gate.Controllers
                     }
                     data.body = body;
                     content = Convert.ToString(data);
+                    idPlatform = data.idPlatform;
                 }
                 else
                 {
@@ -82,7 +80,16 @@ namespace Tincoff_Gate.Controllers
                 descript = ex.Message;
                 content = "{\n  \"version\": \"1.0\",\n  \"type\": \"002\",\n  \"id\": \"\",\n  \"dateTime\": \"" + DateTime.Now.ToString() + "\",\n  \"source\": \"SOFT_LOGIC\",\n  \"restartAllowed\": 0,\n  \"responseCode\": \"-1\",\n  \"responseMessage\": \"Ошибка в адаптере\",\n  \"responseErrBackTrace\": \"Ошибка в адаптере\",\n  \"body\": {\n    \"responseCode\": \"-1\",\n    \"responseMessage\": \"Ошибка в адаптере\",\n    \"responseErrBackTrace\": \"Ошибка в адаптере\"\n  }\n}";
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HbkGate/Esb", Status = status, request = reqBody, response = JsonConvert.SerializeObject(content) });
+            //logger.InsertLog(new Log { id = id, Descript = descript, EventName = "PayLogic->HbkGate/Esb", Status = status, request = reqBody, response = JsonConvert.SerializeObject(content) });
+            
+            logger.StateLog(new Log
+            {
+                idPlatform = idPlatform,
+
+                colvirPayDate = DateTime.Now,
+                colvirPayRequest = reqBody,
+                colvirPayResponse = JsonConvert.SerializeObject(content)
+            });
 
             mess.Content = new StringContent(content);
             mess.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");

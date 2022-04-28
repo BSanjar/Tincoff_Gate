@@ -38,7 +38,73 @@ namespace Tincoff_Gate.Integration
             string addr = _appSettings.Value.hostEsb ;
             string response = SendRequestEsb(body, addr);
             return response;
+        }  
+        
+        public string CheckAml(string fio, string platformId)
+        {
+            Logger logger = new Logger(_connectionString, _appSettings);
+            string body = "";
+            string res = "-1";
+            AmlResponse amlResponse = new AmlResponse();
+            try
+            {
+                string addr = _appSettings.Value.hostEsb;
+                body = "{\n    \"type\": \"aml.checkMembSync\",\n    \"version\": \"1.0\",\n    \"id\": \"" + Guid.NewGuid().ToString() + "\",\n    \"source\": \"AbsAmlOnlineCheck\",\n    \"dateTime\": \"" + DateTime.Now.ToString("dd.MM.yy hh:mm:ss") + "\",\n    \"body\": [\n        {\n            \"UID\": \"" + Guid.NewGuid().ToString() + "\",\n            \"ISSUEDBID\": \"1\",\n            \"USERNAME\": \"COLVIR\",\n            \"BRANCH\": \"125001\",\n            \"WebHookURL\":\""+ addr + "\",\n            \"CHECKTYPES\": [\"2\",\"4\"],\n            \"PERSON\": {\n                    \"NAME\": \"" + fio + "\"\n                }\n\n        }\n    ]\n}";
+                
+                string response = SendRequestEsb(body, addr);
+                amlResponse = JsonConvert.DeserializeObject<AmlResponse>(response);
+                res = amlResponse.body.First().STATUS;
+                 
+            }
+            catch(Exception ex)
+            {
+                res = "-1";
+            }
+            logger.amlLog(new Log
+            {
+                idPlatform = platformId,
+
+                amlCheckDate = DateTime.Now,
+                amlRequest = body,
+                amlResponse = JsonConvert.SerializeObject(amlResponse)
+            });
+            return res;
+
         }
+
+
+        public string CheckAml2(string fio, string platformId)
+        {
+            Logger logger = new Logger(_connectionString, _appSettings);
+            string body = "";
+            string res = "-1";
+            AmlResponse amlResponse = new AmlResponse();
+            try
+            {
+                string addr = _appSettings.Value.hostEsb;
+                body = "{\n    \"type\": \"aml.checkMembSync\",\n    \"version\": \"1.0\",\n    \"id\": \"" + Guid.NewGuid().ToString() + "\",\n    \"source\": \"AbsAmlOnlineCheck\",\n    \"dateTime\": \"" + DateTime.Now.ToString("dd.MM.yy hh:mm:ss") + "\",\n    \"body\": [\n        {\n            \"UID\": \"" + Guid.NewGuid().ToString() + "\",\n            \"ISSUEDBID\": \"1\",\n            \"USERNAME\": \"COLVIR\",\n            \"BRANCH\": \"125001\",\n            \"WebHookURL\":\"" + addr + "\",\n            \"CHECKTYPES\": [\"2\",\"4\"],\n            \"PERSON\": {\n                    \"NAME\": \"" + fio + "\"\n                }\n\n        }\n    ]\n}";
+
+                string response = SendRequestEsb(body, addr);
+                amlResponse = JsonConvert.DeserializeObject<AmlResponse>(response);
+                res = amlResponse.body.First().STATUS;
+
+            }
+            catch (Exception ex)
+            {
+                res = "-1";
+            }
+            logger.amlLogRec(new Log
+            {
+                idPlatform = platformId,
+
+                amlCheckDateRec = DateTime.Now,
+                amlRequestRec = body,
+                amlResponseRec = JsonConvert.SerializeObject(amlResponse)
+            });
+            return res;
+
+        }
+
 
 
         private string SendRequestEsb(string request, string addr)
@@ -88,10 +154,7 @@ namespace Tincoff_Gate.Integration
                 status = "error";
                 throw new Exception("Не удалось выполнить запрос к ESB, ошибка: " + ex.Message);
             }
-            finally
-            {
-                logger.InsertLog(new Log { id = "", Descript = descript, EventName = "HbkGate->Esb", Status = status, request = request, response = resp });
-            }
+            
             return resp;
         }
 
@@ -198,10 +261,7 @@ namespace Tincoff_Gate.Integration
                 
                 throw new Exception("Не удалось выполнить запрос к "+addr+", ошибка: " + ex.Message);
             }
-            finally
-            {
-                logger.InsertLog(new Log { id = "", Descript = descript, EventName = "HbkGate->Xfer/"+func, Status = status, request = body, response = res });
-            }
+           
         }
 
         public string QureyToSL(string body, string func)
@@ -252,10 +312,7 @@ namespace Tincoff_Gate.Integration
                 status = "error";
                 throw new Exception("Не удалось выполнить запрос к " + _appSettings.Value.hostSL + ", ошибка: " + ex.Message);
             }
-            finally
-            {
-                logger.InsertLog(new Log { id = "", Descript = descript, EventName = "HbkGate->PayLogic/"+func, Status = status, request = body, response = res });
-            }
+           
         }
 
         public CheckRespBank CheckBank (CheckReqBank req)
@@ -349,6 +406,7 @@ namespace Tincoff_Gate.Integration
                     "<attribute name=\"description\" value=\"Пополнение счета от "+req.originator.identification.value+"\" />\n        " +
                     "<attribute name=\"origNum\" value=\"" + req.originator.identification.value + "\" />\n        " +
                     "<attribute name=\"origName\" value=\"" + req.originator.fullName + "\" />\n        " +
+                    "<attribute name=\"nationality\" value=\"" + req.originator.nationality + "\" />\n        " +
                     "<attribute name=\"origBank\" value=\"" + req.originator.participant.participantId + "\" />\n        " +
                         origAddr +
                     "<attribute name=\"payAmmount\" value=\"" + req.paymentAmount.amount + "\" />\n        " +
@@ -522,6 +580,7 @@ namespace Tincoff_Gate.Integration
 
                 XmlElement xRoot = xDoc.DocumentElement;
                 XmlNode xnode = xRoot.FirstChild;
+                
                 XmlAttributeCollection resultAttributes = xnode.Attributes;
                 string state = resultAttributes.GetNamedItem("state").InnerText;
                 string substate = resultAttributes.GetNamedItem("substate").InnerText;
@@ -539,6 +598,36 @@ namespace Tincoff_Gate.Integration
                 {
                     resp.transferState.state = "CONFIRMED";
                     resp.transferState.errorMessage = "Перевод подтвержден и успешно завершен";
+
+                    //доп атрибуты статуса
+                    resp.receiver = new Models.CommonModels.Receiver();
+                    resp.receiver.identification = new Models.CommonModels.Identification();
+                    resp.receiver.identification.type = "PHONE";
+                    resp.receiver.participant = new Models.CommonModels.Participant();
+                    resp.receiver.participant.participantId = _appSettings.Value.participantId;
+                    resp.receivingAmount = new Models.CommonModels.Ammount();
+                    resp.receivingAmount.currency = "KGS";
+                    resp.receiver.currencies = new List<string>();
+                    resp.receiver.currencies.Add("KGS");
+                    XmlAttributeCollection resultAttributes2;
+                    for (int i = 0; i < xnode.ChildNodes.Count; i++)
+                    {
+                        resultAttributes2 = xnode.ChildNodes[i].Attributes;
+                        if (resultAttributes2.GetNamedItem("name").InnerText == "id1")
+                        {
+                            resp.receiver.identification.value = resultAttributes2.GetNamedItem("value").InnerText;
+                        }
+                        if (resultAttributes2.GetNamedItem("name").InnerText == "payAmmount")
+                        {
+                            resp.receivingAmount.amount = resultAttributes2.GetNamedItem("value").InnerText;
+                        }
+                        //if (resultAttributes2.GetNamedItem("name").InnerText == "cliAccName")
+                        //{
+                        //    resp.receiver.displayName = resultAttributes2.GetNamedItem("value").InnerText;
+                        //}
+                        
+
+                    }
                 }
               
                 else

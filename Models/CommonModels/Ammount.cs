@@ -9,5 +9,10 @@ namespace Tincoff_Gate.Models.CommonModels
     {
         public string? amount { get; set; }
         public string currency { get; set; }
+
+        public void ReplaceSplitter(string splitter, string newSplitter)
+        {
+            amount = amount.Replace(splitter, newSplitter);
+        }
     }
 }

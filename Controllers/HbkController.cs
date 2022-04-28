@@ -41,10 +41,17 @@ namespace Tincoff_Gate.Controllers
             string status = "info";
             string descript = "успех";
             string id = "";
-            
+            CheckReqBank req = new CheckReqBank();
             try
             {
-                CheckReqBank req = JsonConvert.DeserializeObject<CheckReqBank>(Convert.ToString(reqBody));
+                req = JsonConvert.DeserializeObject<CheckReqBank>(Convert.ToString(reqBody));
+
+                Log logDb = logger.GetLog(req.platformReferenceNumber);
+                if (logDb != null && logDb.idPlatform != null && logDb.idPlatform != "")
+                {
+                    return JsonConvert.DeserializeObject<CheckRespBank>(logDb.checkResponse);
+                }
+
                 id = req.platformReferenceNumber;
                 string ammount = req.paymentAmount.amount;
                 string SettlAmmount = req.settlementAmount.amount?.ToString().Replace(",", ".");
@@ -106,9 +113,21 @@ namespace Tincoff_Gate.Controllers
                 descript = ex.Message;
                 status = "error";
             }
-            
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Xfer->HbKGate/Check", Status = status,request = reqBody, response = JsonConvert.SerializeObject(resp) });
 
+            logger.checkLog(new Log
+            {
+                id = Guid.NewGuid().ToString(),
+                idPlatform = resp.platformReferenceNumber,
+                comment = resp.transferState.errorMessage,
+                state = resp.transferState.state,
+                checkDate = DateTime.Now,
+                checkRequest = reqBody,
+                checkResponse = JsonConvert.SerializeObject(resp),
+                idCheck = resp.platformReferenceNumber,               
+                originatorid = "",
+                originatorBank = _appSettings.Value.participantId,
+                originatorSumm = Convert.ToDouble(req.paymentAmount.amount.Replace('.', ','))
+            });
             return resp;
         }
 
@@ -124,62 +143,93 @@ namespace Tincoff_Gate.Controllers
             string descript = "успех";
             string id = "";
             Logger logger = new Logger(_connectionString, _appSettings);
+            ConfirmReqBank req = new ConfirmReqBank();
             try
             {
-                ConfirmReqBank req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
-                id = req.platformReferenceNumber;
-                string ammount = req.paymentAmount.amount;
-                string SettlAmmount = req.settlementAmount.amount;
-                string recAmmount = req.receivingAmount.amount;
-                //if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
-                //{
-                //    ammount = ammount + ".0";
-                //}
-
-                //if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
-                //{
-                //    SettlAmmount = SettlAmmount + ".0";
-                //}
-
-                //if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
-                //{
-                //    recAmmount = recAmmount + ".0";
-                //}
-
-                
-                string ConcatStr =
-                    req.platformReferenceNumber +
-                    req.originator.identification.value +
-                    req.receiver.identification.value +
-                    ammount +
-                    req.paymentAmount.currency +
-                    SettlAmmount +
-                    req.settlementAmount.currency +
-                    recAmmount +
-                    req.receivingAmount.currency;
-                Signature signature = new Signature();
-
-                bool signVerificed = signature.VerifySignature(ConcatStr, req.platformSignature);
-                //test
-                //signVerificed = true;
-                if (!signVerificed)
+                req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
+                Log logDb = logger.GetLog(req.platformReferenceNumber);
+                if (logDb != null && logDb.idPlatform!=null && logDb.idPlatform!="")
                 {
-                    resp.transferState = new Models.CommonModels.TransferState();
-                    resp.transferState.errorCode = 206;
-                    resp.transferState.errorMessage = "Ошибка проверки подписи платформы";
-                    resp.transferState.state = "INVALID";
-                    descript = "Ошибка проверки подписи платформы";
-                    //status = "error";
-                    //return resp;
+                    return JsonConvert.DeserializeObject<ConfirmRespBank>(logDb.payResponse);
+                }
+                Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
+
+                string amlResult = integration.CheckAml(req.originator.fullName, req.platformReferenceNumber);
+                if (amlResult == "0" || amlResult == "3")
+                {
+                    string amlResult2 = integration.CheckAml2(req.receiver.displayName, req.platformReferenceNumber);
+                    if (amlResult == "0" || amlResult == "3")
+                    {
+
+
+                        id = req.platformReferenceNumber;
+                        string ammount = req.paymentAmount.amount;
+                        string SettlAmmount = req.settlementAmount.amount;
+                        string recAmmount = req.receivingAmount.amount;
+                        //if (!(req.paymentAmount.amount.ToString().Contains(',') || req.paymentAmount.amount.ToString().Contains('.')))
+                        //{
+                        //    ammount = ammount + ".0";
+                        //}
+
+                        //if (!(req.settlementAmount.amount.ToString().Contains(',') || req.settlementAmount.amount.ToString().Contains('.')))
+                        //{
+                        //    SettlAmmount = SettlAmmount + ".0";
+                        //}
+
+                        //if (!(recAmmount.Contains(',') || recAmmount.Contains('.')))
+                        //{
+                        //    recAmmount = recAmmount + ".0";
+                        //}
+
+
+                        string ConcatStr =
+                            req.platformReferenceNumber +
+                            req.originator.identification.value +
+                            req.receiver.identification.value +
+                            ammount +
+                            req.paymentAmount.currency +
+                            SettlAmmount +
+                            req.settlementAmount.currency +
+                            recAmmount +
+                            req.receivingAmount.currency;
+                        Signature signature = new Signature();
+
+                        bool signVerificed = signature.VerifySignature(ConcatStr, req.platformSignature);
+                        //test
+                        //signVerificed = true;
+                        if (!signVerificed)
+                        {
+                            resp.transferState = new Models.CommonModels.TransferState();
+                            resp.transferState.errorCode = 206;
+                            resp.transferState.errorMessage = "Ошибка проверки подписи платформы";
+                            resp.transferState.state = "INVALID";
+                            descript = "Ошибка проверки подписи платформы";
+                            //status = "error";
+                            //return resp;
+                        }
+                        else
+                        {
+                            Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
+                            resp = integr.ConfirmBank(req);
+                            resp.platformReferenceNumber = req.platformReferenceNumber;
+
+                        }
+                    }
+                    else
+                    {
+                        resp.transferState = new Models.CommonModels.TransferState();
+                        resp.transferState.errorCode = 205;
+                        resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
+                        resp.transferState.state = "INVALID";
+                    }
                 }
                 else
                 {
-                    Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
-                    resp = integr.ConfirmBank(req);
-                    resp.platformReferenceNumber = req.platformReferenceNumber;
-                    
+                    resp.transferState = new Models.CommonModels.TransferState();
+                    resp.transferState.errorCode = 205;
+                    resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
+                    resp.transferState.state = "INVALID";
                 }
-
             }
             catch (Exception ex)
             {
@@ -191,9 +241,9 @@ namespace Tincoff_Gate.Controllers
                 descript = ex.Message;
             }
 
-            
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Xfer->HabkGate/Confirm", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.payLog(new Log { idPlatform = req.platformReferenceNumber, state = resp.transferState.state, comment = resp.transferState.errorMessage, payRequest = reqBody, payResponse = JsonConvert.SerializeObject(resp), payDate = DateTime.Now });
 
+           
             return resp;
         }
 
@@ -245,7 +295,14 @@ namespace Tincoff_Gate.Controllers
                 //resp.platformReferenceNumber = req.platformReferenceNumber;
                 descript = ex.Message;
             }
-            logger.InsertLog(new Log { id = id, Descript = descript, EventName = "Xfer->HabkGate/State", Status = status, request = reqBody, response = JsonConvert.SerializeObject(resp) });
+            logger.StateLog(new Log
+            {
+                idPlatform = resp.platformReferenceNumber,
+
+                stateDate = DateTime.Now,
+                stateRequest = reqBody,
+                stateResponse = JsonConvert.SerializeObject(resp)
+            });
 
             return resp;
         }

@@ -6,7 +6,7 @@ using Tincoff_Gate.Models.CommonModels;
 
 namespace Tincoff_Gate.Models.ToXfer
 {
-    public class CheckReqXfer
+    public class CheckReqXfer 
     {
         public string originatorReferenceNumber { get; set; }
         public string originatorSignature { get; set; }
