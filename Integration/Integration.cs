@@ -40,11 +40,12 @@ namespace Tincoff_Gate.Integration
             return response;
         }  
         
-        public string CheckAml(string fio, string platformId)
+        public AmlResponseMethod CheckAml(string fio, string platformId)
         {
             Logger logger = new Logger(_connectionString, _appSettings);
             string body = "";
-            string res = "-1";
+            AmlResponseMethod res = new AmlResponseMethod();
+            res.log = new Log();
             AmlResponse amlResponse = new AmlResponse();
             try
             {
@@ -53,31 +54,36 @@ namespace Tincoff_Gate.Integration
                 
                 string response = SendRequestEsb(body, addr);
                 amlResponse = JsonConvert.DeserializeObject<AmlResponse>(response);
-                res = amlResponse.body.First().STATUS;
+                res.log.amlRequest = body;
+                res.log.amlResponse = JsonConvert.SerializeObject(amlResponse);
+                res.log.amlCheckDate = DateTime.Now;
+
+                res.code = amlResponse.body.First().STATUS;
                  
             }
             catch(Exception ex)
             {
-                res = "-1";
+                res.code = "-1";
             }
-            logger.amlLog(new Log
-            {
-                idPlatform = platformId,
+            //logger.amlLog(new Log
+            //{
+            //    idPlatform = platformId,
 
-                amlCheckDate = DateTime.Now,
-                amlRequest = body,
-                amlResponse = JsonConvert.SerializeObject(amlResponse)
-            });
+            //    amlCheckDate = DateTime.Now,
+            //    amlRequest = body,
+            //    amlResponse = JsonConvert.SerializeObject(amlResponse)
+            //});
             return res;
 
         }
 
 
-        public string CheckAml2(string fio, string platformId)
+        public AmlResponseMethod CheckAml2(string fio, string platformId)
         {
             Logger logger = new Logger(_connectionString, _appSettings);
             string body = "";
-            string res = "-1";
+            AmlResponseMethod res = new AmlResponseMethod();
+            res.log = new Log();
             AmlResponse amlResponse = new AmlResponse();
             try
             {
@@ -86,21 +92,25 @@ namespace Tincoff_Gate.Integration
 
                 string response = SendRequestEsb(body, addr);
                 amlResponse = JsonConvert.DeserializeObject<AmlResponse>(response);
-                res = amlResponse.body.First().STATUS;
+                res.code = amlResponse.body.First().STATUS;
+
+                res.log.amlRequest = body;
+                res.log.amlResponse = JsonConvert.SerializeObject(amlResponse);
+                res.log.amlCheckDate = DateTime.Now;
 
             }
             catch (Exception ex)
             {
-                res = "-1";
+               res.code = "-1";
             }
-            logger.amlLogRec(new Log
-            {
-                idPlatform = platformId,
+            //logger.amlLogRec(new Log
+            //{
+            //    idPlatform = platformId,
 
-                amlCheckDateRec = DateTime.Now,
-                amlRequestRec = body,
-                amlResponseRec = JsonConvert.SerializeObject(amlResponse)
-            });
+            //    amlCheckDateRec = DateTime.Now,
+            //    amlRequestRec = body,
+            //    amlResponseRec = JsonConvert.SerializeObject(amlResponse)
+            //});
             return res;
 
         }

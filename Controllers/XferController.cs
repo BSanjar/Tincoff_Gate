@@ -42,6 +42,11 @@ namespace Tincoff_Gate.Controllers
             string id = "";
             string clientColvirId = "";
             CheckReqXfer req = new CheckReqXfer();
+
+            AmlResponseMethod amlResult = new AmlResponseMethod();
+            AmlResponseMethod amlResult2 = new AmlResponseMethod();
+            amlResult.log = new Log();
+            amlResult2.log = new Log();
             try
             {
                 req = JsonConvert.DeserializeObject<CheckReqXfer>(Convert.ToString(reqBody));
@@ -56,8 +61,8 @@ namespace Tincoff_Gate.Controllers
                     {
                         if (Convert.ToDouble(_appSettings.Value.countTrnDay) == 0 || Convert.ToDouble(_appSettings.Value.countTrnDay) >= Convert.ToDouble(limit.countTrnDay) + 1)
                         {
-                            string amlResult = integration.CheckAml(req.originator.fullName, req.originatorReferenceNumber);
-                            if (amlResult == "0" || amlResult == "3")
+                            amlResult = integration.CheckAml(req.originator.fullName, req.originatorReferenceNumber);
+                            if (amlResult.code == "0" || amlResult.code == "3")
                             {
 
                                 id = req.originatorReferenceNumber;
@@ -82,8 +87,8 @@ namespace Tincoff_Gate.Controllers
                                 //замена точки на запятой
                                 if (resp != null)
                                 {
-                                    string amlResult2 = integration.CheckAml2(resp.receiver.displayName, req.originatorReferenceNumber);
-                                    if (amlResult == "2" || amlResult == "-1")
+                                    amlResult2 = integration.CheckAml2(resp.receiver.displayName, req.originatorReferenceNumber);
+                                    if (amlResult.code == "2" || amlResult.code == "-1")
                                     {
                                         resp.transferState = new Models.CommonModels.TransferState();
                                         resp.transferState.errorCode = -1;
@@ -128,7 +133,7 @@ namespace Tincoff_Gate.Controllers
                         else
                         {
                             resp.transferState = new Models.CommonModels.TransferState();
-                            resp.transferState.errorCode = -1;
+                            resp.transferState.errorCode = -21;
                             resp.transferState.errorMessage = "Исчерпан лимит по количеству транзакций за день";
                             status = "CHECK_PENDING";
                             descript = "Исчерпан лимит по количеству транзакций за день";
@@ -137,7 +142,7 @@ namespace Tincoff_Gate.Controllers
                     else
                     {
                         resp.transferState = new Models.CommonModels.TransferState();
-                        resp.transferState.errorCode = -1;
+                        resp.transferState.errorCode = -22;
                         resp.transferState.errorMessage = "Исчерпан лимит по сумме транзакций за месяц";
                         status = "CHECK_PENDING";
                         descript = "Исчерпан лимит по сумме транзакций за месяц";
@@ -146,7 +151,7 @@ namespace Tincoff_Gate.Controllers
                 else
                 {
                     resp.transferState = new Models.CommonModels.TransferState();
-                    resp.transferState.errorCode = -1;
+                    resp.transferState.errorCode = -23;
                     resp.transferState.errorMessage = "Исчерпан лимит по сумме транзакций за день";
                     status = "CHECK_PENDING";
                     descript = "Исчерпан лимит по сумме транзакций за день";
@@ -172,7 +177,15 @@ namespace Tincoff_Gate.Controllers
                                       idPlatform = resp.platformReferenceNumber,
                                       originatorid = colvirId,
                                       originatorBank = _appSettings.Value.participantId,
-                                      originatorSumm = Convert.ToDouble(req.paymentAmount.amount.Replace('.',','))           
+                                      originatorSumm = Convert.ToDouble(req.paymentAmount.amount.Replace('.',',')),
+
+                amlCheckDate = amlResult.log.amlCheckDate,
+                amlRequest = amlResult.log.amlRequest,
+                amlResponse = amlResult.log.amlResponse,
+
+                amlCheckDateRec = amlResult2.log.amlCheckDate,
+                amlRequestRec = amlResult2.log.amlRequest,
+                amlResponseRec = amlResult2.log.amlResponse
             });
           
             return resp;

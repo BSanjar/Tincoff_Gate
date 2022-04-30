@@ -65,7 +65,15 @@ namespace Tincoff_Gate.Integration
                     com.Parameters.Add("ORIGINATORSUMM_", OracleDbType.Double, log.originatorSumm, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("CHECKREQUEST_", OracleDbType.Clob, log.checkRequest, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("CHECKRESPONSE_", OracleDbType.Clob, log.checkResponse, System.Data.ParameterDirection.Input);
-                    com.Parameters.Add("CHECKDATE_", OracleDbType.Date, log.checkDate, System.Data.ParameterDirection.Input);                  
+                    com.Parameters.Add("CHECKDATE_", OracleDbType.Date, log.checkDate, System.Data.ParameterDirection.Input);
+
+                    com.Parameters.Add("AMLREQUEST_", OracleDbType.Clob, log.amlRequest, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("AMLRESPONSE_", OracleDbType.Clob, log.amlResponse, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("CHECKAMLDATE_", OracleDbType.Date, log.amlCheckDate, System.Data.ParameterDirection.Input);
+
+                    com.Parameters.Add("AMLReceiverREQUEST_", OracleDbType.Clob, log.amlRequestRec, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("AMLreceiverRESPONSE_", OracleDbType.Clob, log.amlResponseRec, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("CHECKAMLReceiverDATE_", OracleDbType.Date, log.amlCheckDateRec, System.Data.ParameterDirection.Input);
 
                     com.Parameters.Add("curs_", OracleDbType.RefCursor, System.Data.ParameterDirection.Output);
                     OracleDataReader dr;

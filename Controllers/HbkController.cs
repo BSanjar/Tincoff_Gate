@@ -144,6 +144,11 @@ namespace Tincoff_Gate.Controllers
             string id = "";
             Logger logger = new Logger(_connectionString, _appSettings);
             ConfirmReqBank req = new ConfirmReqBank();
+
+            AmlResponseMethod amlResult = new AmlResponseMethod();
+            AmlResponseMethod amlResult2 = new AmlResponseMethod();
+            amlResult.log = new Log();
+                amlResult2.log = new Log();
             try
             {
                 req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
@@ -154,11 +159,11 @@ namespace Tincoff_Gate.Controllers
                 }
                 Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
-                string amlResult = integration.CheckAml(req.originator.fullName, req.platformReferenceNumber);
-                if (amlResult == "0" || amlResult == "3")
+                amlResult = integration.CheckAml(req.originator.fullName, req.platformReferenceNumber);
+                if (amlResult.code == "0" || amlResult.code == "3")
                 {
-                    string amlResult2 = integration.CheckAml2(req.receiver.displayName, req.platformReferenceNumber);
-                    if (amlResult == "0" || amlResult == "3")
+                    amlResult2 = integration.CheckAml2(req.receiver.displayName, req.platformReferenceNumber);
+                    if (amlResult2.code == "0" || amlResult2.code == "3")
                     {
 
 
@@ -241,7 +246,19 @@ namespace Tincoff_Gate.Controllers
                 descript = ex.Message;
             }
 
-            logger.payLog(new Log { idPlatform = req.platformReferenceNumber, state = resp.transferState.state, comment = resp.transferState.errorMessage, payRequest = reqBody, payResponse = JsonConvert.SerializeObject(resp), payDate = DateTime.Now });
+            logger.payLog(new Log { idPlatform = req.platformReferenceNumber, state = resp.transferState.state, comment = resp.transferState.errorMessage, 
+                payRequest = reqBody, payResponse = JsonConvert.SerializeObject(resp), payDate = DateTime.Now,
+                amlCheckDate = amlResult.log.amlCheckDate,
+                amlRequest = amlResult.log.amlRequest,
+                amlResponse = amlResult.log.amlResponse,
+
+                amlCheckDateRec = amlResult2.log.amlCheckDate,
+                amlRequestRec = amlResult2.log.amlRequest,
+                amlResponseRec = amlResult2.log.amlResponse
+
+
+
+            });
 
            
             return resp;
