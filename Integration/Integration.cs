@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using Tincoff_Gate.Models;
+using Tincoff_Gate.Models.CommonModels;
 using Tincoff_Gate.Models.SL;
 using Tincoff_Gate.Models.ToBank;
 using Tincoff_Gate.Models.ToXfer;
@@ -50,7 +51,9 @@ namespace Tincoff_Gate.Integration
             try
             {
                 string addr = _appSettings.Value.hostEsb;
-                body = "{\n    \"type\": \"aml.checkMembSync\",\n    \"version\": \"1.0\",\n    \"id\": \"" + Guid.NewGuid().ToString() + "\",\n    \"source\": \"AbsAmlOnlineCheck\",\n    \"dateTime\": \"" + DateTime.Now.ToString("dd.MM.yy hh:mm:ss") + "\",\n    \"body\": [\n        {\n            \"UID\": \"" + Guid.NewGuid().ToString() + "\",\n            \"ISSUEDBID\": \"1\",\n            \"USERNAME\": \"COLVIR\",\n            \"BRANCH\": \"125001\",\n            \"WebHookURL\":\""+ addr + "\",\n            \"CHECKTYPES\": [\"2\",\"4\"],\n            \"PERSON\": {\n                    \"NAME\": \"" + fio + "\"\n                }\n\n        }\n    ]\n}";
+                //body = "{\n    \"type\": \"aml.checkMembSync\",\n    \"version\": \"1.0\",\n    \"id\": \"" + Guid.NewGuid().ToString() + "\",\n    \"source\": \"AbsAmlOnlineCheck\",\n    \"dateTime\": \"" + DateTime.Now.ToString("dd.MM.yy hh:mm:ss") + "\",\n    \"body\": [\n        {\n            \"UID\": \"" + Guid.NewGuid().ToString() + "\",\n            \"ISSUEDBID\": \"3\",\n            \"USERNAME\": \"COLVIR\",\n            \"BRANCH\": \"125001\",\n            \"WebHookURL\":\""+ addr + "\",\n            \"CHECKTYPES\": [\"2\",\"4\"],\n            \"PERSON\": {\n                    \"NAME\": \"" + fio + "\"\n                }\n\n        }\n    ]\n}";
+                //тест
+                body = "{\n    \"type\": \"aml.checkMembSync\",\n    \"version\": \"1.0\",\n    \"id\": \"" + Guid.NewGuid().ToString() + "\",\n    \"source\": \"AbsAmlOnlineCheck\",\n    \"dateTime\": \"" + DateTime.Now.ToString("dd.MM.yy hh:mm:ss") + "\",\n    \"body\": [\n        {\n            \"UID\": \"" + Guid.NewGuid().ToString() + "\",\n            \"ISSUEDBID\": \"3\",\n            \"USERNAME\": \"COLVIR\",\n            \"BRANCH\": \"125001\",\n            \"WebHookURL\":\""+ addr + "\",\n            \"CHECKTYPES\": [\"2\",\"4\"],\n            \"PERSON\": {\n                    \"NAME\": \"Терешин Константин\"\n                }\n\n        }\n    ]\n}";
                 
                 string response = SendRequestEsb(body, addr);
                 amlResponse = JsonConvert.DeserializeObject<AmlResponse>(response);
@@ -77,7 +80,6 @@ namespace Tincoff_Gate.Integration
 
         }
 
-
         public AmlResponseMethod CheckAml2(string fio, string platformId)
         {
             Logger logger = new Logger(_connectionString, _appSettings);
@@ -94,9 +96,9 @@ namespace Tincoff_Gate.Integration
                 amlResponse = JsonConvert.DeserializeObject<AmlResponse>(response);
                 res.code = amlResponse.body.First().STATUS;
 
-                res.log.amlRequest = body;
-                res.log.amlResponse = JsonConvert.SerializeObject(amlResponse);
-                res.log.amlCheckDate = DateTime.Now;
+                res.log.amlRequestRec = body;
+                res.log.amlResponseRec = JsonConvert.SerializeObject(amlResponse);
+                res.log.amlCheckDateRec = DateTime.Now;
 
             }
             catch (Exception ex)
@@ -114,8 +116,6 @@ namespace Tincoff_Gate.Integration
             return res;
 
         }
-
-
 
         private string SendRequestEsb(string request, string addr)
         {
@@ -167,7 +167,6 @@ namespace Tincoff_Gate.Integration
             
             return resp;
         }
-
 
         public CheckRespXfer CheckXfer(CheckReqXfer checkReqXfer)
         {
@@ -325,12 +324,16 @@ namespace Tincoff_Gate.Integration
            
         }
 
-        public CheckRespBank CheckBank (CheckReqBank req)
+        public ServiceResult CheckBank (CheckReqBank req)
         {
             string body = CreateCheckPaymentQuery(req.receiver.identification.value); 
             string response = QureyToSL(body,"Check");
 
-            CheckRespBank resp = new CheckRespBank();
+           
+            
+
+
+                ServiceResult resp = new ServiceResult();
             resp = CreateCheckPaymentResponse(response, req);
 
             return resp;
@@ -421,10 +424,14 @@ namespace Tincoff_Gate.Integration
                         origAddr +
                     "<attribute name=\"payAmmount\" value=\"" + req.paymentAmount.amount + "\" />\n        " +
                     "<attribute name=\"payAmmountCurr\" value=\"" + req.paymentAmount.currency + "\" />\n        " +
-                    "<attribute name=\"displayFeeAmount\" value=\"" + req.displayFeeAmount.amount + "\" />\n        " +
-                    "<attribute name=\"displayFeeAmountCurr\" value=\"" + req.displayFeeAmount.currency + "\" />\n        " +
-                    "<attribute name=\"feeAmount\" value=\"" + req.feeAmount.amount + "\" />\n        " +
-                    "<attribute name=\"feeAmountCurr\" value=\"" + req.feeAmount.currency + "\" />\n        " +
+                    "<attribute name=\"displayFeeAmount\" value=\"" + req.displayFeeAmount?.amount + "\" />\n        " +
+                    "<attribute name=\"displayFeeAmountCurr\" value=\"" + req.displayFeeAmount?.currency + "\" />\n        " +
+                    "<attribute name=\"feeAmountPlatform\" value=\"" + req.feeAmount.Where(a=>a.type== "PLATFORM").FirstOrDefault().amount + "\" />\n        " +
+                    "<attribute name=\"feeAmountCurrPlatform\" value=\"" + req.feeAmount.Where(a => a.type == "PLATFORM").FirstOrDefault().currency + "\" />\n        " +
+                     "<attribute name=\"feeAmountInter\" value=\"" + req.feeAmount.Where(a => a.type == "INTERMEDIARY").FirstOrDefault().amount + "\" />\n        " +
+                    "<attribute name=\"feeAmountCurrInter\" value=\"" + req.feeAmount.Where(a => a.type == "INTERMEDIARY").FirstOrDefault().currency + "\" />\n        " +
+                     "<attribute name=\"feeAmountRec\" value=\"" + req.feeAmount.Where(a => a.type == "RECEIVER").FirstOrDefault().amount + "\" />\n        " +
+                    "<attribute name=\"feeAmountCurrRec\" value=\"" + req.feeAmount.Where(a => a.type == "RECEIVER").FirstOrDefault().currency + "\" />\n        " +
                     "<attribute name=\"settlementAmount\" value=\"" + req.settlementAmount.amount + "\" />\n        " +
                     "<attribute name=\"settlementAmountCurr\" value=\"" + req.settlementAmount.currency + "\" />\n        " +
                     "<attribute name=\"rate\" value=\"" + req.conversionRateSell.rate + "\" />\n        " +
@@ -456,7 +463,7 @@ namespace Tincoff_Gate.Integration
         }
 
 
-        public CheckRespBank CreateCheckPaymentResponse(string respSL, CheckReqBank req)
+        public ServiceResult CreateCheckPaymentResponse(string respSL, CheckReqBank req)
         {
             try
             {
@@ -488,9 +495,22 @@ namespace Tincoff_Gate.Integration
                 resp.receivingAmount.currency = "";
 
                 CheckResp re = SLCheckResponce(respSL);
-                                        
+                //проверка получателя в АМЛ списке
+                AmlResponseMethod amlResult2 = new AmlResponseMethod();
+                amlResult2.log = new Log();
+                amlResult2 = CheckAml2(re.name, req.platformReferenceNumber);
+                if (amlResult2.code == "0" || amlResult2.code == "3")
+                {
+
                     if (re.identifierStatus == "OK" && re.blackListFl == "0" && re.allowedCreditFl == "1")
                     {
+                        //запрашиваю паспортные данные для СБП
+                        string reqInfoClient = CreateClientInfoPaymentQuery(re.clicode);
+                        string responseInfoClient = QureyToSL(reqInfoClient, "ClientInfo");
+                        ClientInfoRespSL respInfoClient = SLClientInfoResponce(responseInfoClient);
+
+
+
                         resp.transferState.errorCode = 100;
                         resp.transferState.errorMessage = "Запрос проверки перевода выполнен без ошибок";
                         resp.transferState.state = "CHECKED";
@@ -519,8 +539,27 @@ namespace Tincoff_Gate.Integration
                         resp.receivingAmount.amount = req.receivingAmount.amount;
                         resp.receivingAmount.currency = req.receivingAmount.currency;
                     }
-                
-                return resp;
+                }
+                else
+                {
+                    resp.transferState.errorCode = 101;
+                    resp.transferState.errorMessage = "Участник перевода недоступен";
+                    resp.transferState.state = "INVALID";
+                    resp.platformReferenceNumber = req.platformReferenceNumber;
+                    resp.checkDate = DateTime.Now;
+                    //resp.receiver.currencies.Add(currency);
+                    //resp.receiver.displayName = maskedName;
+                    //resp.receiver.identification.type = "PHONE";
+                    //resp.receiver.identification.value = req.receiver.identification.value;
+                    //resp.receiver.particiant.participant = req.receiver.particiant.participant;
+                    resp.receivingAmount.amount = req.receivingAmount.amount;
+                    resp.receivingAmount.currency = req.receivingAmount.currency;
+                }
+
+                ServiceResult sr = new ServiceResult();
+                sr.checkRespBank = resp;
+                sr.amlResp = amlResult2;
+                return sr;
             }
             catch (Exception ex)
             {
@@ -667,7 +706,6 @@ namespace Tincoff_Gate.Integration
             }
         }
 
-
         public CheckResp SLCheckResponce(string respSL)
         {
             try
@@ -726,6 +764,9 @@ namespace Tincoff_Gate.Integration
                             case "currency":
                                 resp.currency = resultAttributes.GetNamedItem("value").InnerText;
                                 break;
+                            case "clicode":
+                                resp.clicode = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
                         }
                     }
                     
@@ -737,5 +778,135 @@ namespace Tincoff_Gate.Integration
                 throw new Exception("Не удалось обработать ответ HBK-Check:" + ex.Message);
             }
         }
+
+
+
+        public string CreateClientInfoPaymentQuery(string acc)
+        {
+            string resp = "";
+            try
+            {
+                resp = "<request point=\"" + _appSettings.Value.pointSL + "\">\n    <advanced service=\"" + _appSettings.Value.ServiceIdSL + "\" function=\"ClientInfo\" >\n        <attribute name=\"clicode\" value=\"" + acc + "\"/>\n    </advanced>\n</request>";
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Не удалось сформировать запрос в check-SL:" + ex.Message);
+            }
+            return resp;
+        }
+
+
+        public ClientInfoRespSL SLClientInfoResponce(string respSL)
+        {
+            try
+            {
+                ClientInfoRespSL resp = new ClientInfoRespSL();
+
+                XmlDocument xDoc = new XmlDocument();
+                xDoc.LoadXml(respSL);
+
+                if (xDoc == null || xDoc.InnerXml == "")
+                {
+                    resp.codeRes = "-1";
+                    return resp;
+                }
+
+                XmlElement xRoot = xDoc.DocumentElement;
+                XmlNode xnode = xRoot.FirstChild;
+                XmlAttributeCollection resultAttributes = xnode.Attributes;
+                string service = resultAttributes.GetNamedItem("service").InnerText;
+
+
+                if (service == "0")
+                {
+                    resp.codeRes = "0";
+                    XmlNodeList xnodeList = xRoot.FirstChild.FirstChild.ChildNodes;
+
+                    for (int i = 0; i < xnodeList.Count; i++)
+                    {
+                        resultAttributes = xnodeList[i].Attributes;
+                        switch (resultAttributes.GetNamedItem("key").InnerText)
+                        {
+                            case "code":
+                                resp.code = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "passFin":
+                                resp.passFin = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "passNum":
+                                resp.passNum = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "address":
+                                resp.address = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "flagBlackList":
+                                resp.flagBlackList = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "fullName":
+                                resp.fullName = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+
+                            case "plname1":
+                                resp.plname1 = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "plname2":
+                                resp.plname2 = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "plname3":
+                                resp.plname3 = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+
+                            case "adressReg":
+                                resp.adressReg = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "resident":
+                                resp.resident = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "adressDate":
+                                resp.adressDate = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "cliType":
+                                resp.cliType = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "passTypeName":
+                                resp.passTypeName = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "clientIdentLevel":
+                                resp.clientIdentLevel = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "taxCode":
+                                resp.taxCode = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "proofNum":
+                                resp.proofNum = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "passDate":
+                                resp.passDate = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "birthDate":
+                                resp.birthDate = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "passIssuer":
+                                resp.passIssuer = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                            case "department":
+                                resp.department = resultAttributes.GetNamedItem("value").InnerText;
+                                break;
+                        }
+                    }
+
+                }
+                else
+                {
+                    resp.codeRes = "-1";
+                }
+                return resp;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Не удалось обработать ответ HBK-Check:" + ex.Message);
+            }
+        }
+
     }
 }

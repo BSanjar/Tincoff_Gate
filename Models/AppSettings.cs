@@ -24,6 +24,7 @@
         public string pointAccInn { get; set; }
         public string source { get; set; }
         public string participantId { get; set; }
+        public string tinkoffParticipantId { get; set; }
 
         public string LogAll { get; set; }
         public string countTrnDay { get; set; }

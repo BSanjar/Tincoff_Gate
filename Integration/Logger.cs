@@ -105,7 +105,13 @@ namespace Tincoff_Gate.Integration
                     com.Parameters.Add("PAYREQUEST_", OracleDbType.Clob, log.payRequest, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("PAYRESPONSE_", OracleDbType.Clob, log.payResponse, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("PAYDATE_", OracleDbType.Date, log.payDate, System.Data.ParameterDirection.Input);                   
+                    com.Parameters.Add("amlRequest_", OracleDbType.Clob, log.amlRequest, System.Data.ParameterDirection.Input);                   
+                    com.Parameters.Add("amlResponse_", OracleDbType.Clob, log.amlResponse, System.Data.ParameterDirection.Input);                   
+                    com.Parameters.Add("amlCheckDate_", OracleDbType.Date, log.amlCheckDate, System.Data.ParameterDirection.Input);
 
+                    com.Parameters.Add("amlRecRequest_", OracleDbType.Clob, log.amlRequestRec, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("amlRecResponse_", OracleDbType.Clob, log.amlResponseRec, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("amlRecCheckDate_", OracleDbType.Date, log.amlCheckDateRec, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("curs_", OracleDbType.RefCursor, System.Data.ParameterDirection.Output);
                     OracleDataReader dr;
 
@@ -232,6 +238,8 @@ namespace Tincoff_Gate.Integration
                     com.Parameters.Add("STATEREQUEST_", OracleDbType.Clob, log.stateRequest, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("STATERESPONSE_", OracleDbType.Clob, log.stateResponse, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("STATEDATE_", OracleDbType.Date, log.stateDate, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("state_", OracleDbType.Varchar2, log.state, System.Data.ParameterDirection.Input);
+                    com.Parameters.Add("comment_", OracleDbType.Varchar2, log.comment, System.Data.ParameterDirection.Input);
                     com.Parameters.Add("curs_", OracleDbType.RefCursor, System.Data.ParameterDirection.Output);
                     OracleDataReader dr;
 

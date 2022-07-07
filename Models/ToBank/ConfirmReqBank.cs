@@ -14,7 +14,7 @@ namespace Tincoff_Gate.Models.ToBank
         public Receiver receiver { get; set; }
         public Ammount paymentAmount { get; set; }
         public Ammount displayFeeAmount { get; set; }
-        public Ammount feeAmount { get; set; }
+        public List<AmmountWithType> feeAmount { get; set; }
         public Ammount settlementAmount { get; set; }
         public Ammount receivingAmount { get; set; }
         public DateTime checkDate { get; set; }

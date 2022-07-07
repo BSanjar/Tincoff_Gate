@@ -17,5 +17,6 @@ namespace Tincoff_Gate.Models.SL
         public string identifierStatus { get; set; }
         public string maskedName { get; set; }
         public string blackListFl { get; set; }
+        public string clicode { get; set; }
     }
 }

@@ -42,8 +42,13 @@ namespace Tincoff_Gate.Controllers
             string descript = "успех";
             string id = "";
             CheckReqBank req = new CheckReqBank();
+            AmlResponseMethod amlResult2 = new AmlResponseMethod();
+            amlResult2.log = new Log();
             try
             {
+
+              
+
                 req = JsonConvert.DeserializeObject<CheckReqBank>(Convert.ToString(reqBody));
 
                 Log logDb = logger.GetLog(req.platformReferenceNumber);
@@ -98,9 +103,10 @@ namespace Tincoff_Gate.Controllers
                 else
                 {
                     Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
-                    resp = integr.CheckBank(req);
-                }
-               
+                    ServiceResult sr = integr.CheckBank(req);
+                    resp = sr.checkRespBank;
+                    amlResult2 = sr.amlResp;
+                }               
             }
             catch (Exception ex)
             {
@@ -114,6 +120,9 @@ namespace Tincoff_Gate.Controllers
                 status = "error";
             }
 
+
+
+
             logger.checkLog(new Log
             {
                 id = Guid.NewGuid().ToString(),
@@ -123,11 +132,14 @@ namespace Tincoff_Gate.Controllers
                 checkDate = DateTime.Now,
                 checkRequest = reqBody,
                 checkResponse = JsonConvert.SerializeObject(resp),
-                idCheck = resp.platformReferenceNumber,               
+                idCheck = resp.platformReferenceNumber,
                 originatorid = "",
-                originatorBank = _appSettings.Value.participantId,
-                originatorSumm = Convert.ToDouble(req.paymentAmount.amount.Replace('.', ','))
-            });
+                originatorBank = "",
+                originatorSumm = Convert.ToDouble(req.paymentAmount.amount.Replace('.', ',')),
+                amlRequestRec =  amlResult2.log.amlRequestRec,
+                amlResponseRec = amlResult2.log.amlResponseRec,
+                amlCheckDateRec = amlResult2.log.amlCheckDateRec
+            }); 
             return resp;
         }
 
@@ -146,25 +158,37 @@ namespace Tincoff_Gate.Controllers
             ConfirmReqBank req = new ConfirmReqBank();
 
             AmlResponseMethod amlResult = new AmlResponseMethod();
-            AmlResponseMethod amlResult2 = new AmlResponseMethod();
             amlResult.log = new Log();
-                amlResult2.log = new Log();
+
+            string amlreq2 = "";
+            string amlresp2 = "";
+            DateTime amldate2 = DateTime.Now;
+              
             try
             {
                 req = JsonConvert.DeserializeObject<ConfirmReqBank>(Convert.ToString(reqBody));
                 Log logDb = logger.GetLog(req.platformReferenceNumber);
-                if (logDb != null && logDb.idPlatform!=null && logDb.idPlatform!="")
+
+
+
+                if (logDb != null && logDb.idPlatform != null && logDb.idPlatform != "")
                 {
-                    return JsonConvert.DeserializeObject<ConfirmRespBank>(logDb.payResponse);
+                    amlreq2 = logDb.amlRequestRec;
+                    amlresp2 = logDb.amlResponseRec;
+                    amldate2 = logDb.amlCheckDateRec;
+                    if (logDb.payResponse != null && logDb.payResponse != "")
+                    {
+                        return JsonConvert.DeserializeObject<ConfirmRespBank>(logDb.payResponse);
+                    }
+
+
                 }
                 Integration.Integration integration = new Integration.Integration(_appSettings, _connectionString);
 
                 amlResult = integration.CheckAml(req.originator.fullName, req.platformReferenceNumber);
                 if (amlResult.code == "0" || amlResult.code == "3")
                 {
-                    amlResult2 = integration.CheckAml2(req.receiver.displayName, req.platformReferenceNumber);
-                    if (amlResult2.code == "0" || amlResult2.code == "3")
-                    {
+                   
 
 
                         id = req.platformReferenceNumber;
@@ -219,20 +243,13 @@ namespace Tincoff_Gate.Controllers
                             resp.platformReferenceNumber = req.platformReferenceNumber;
 
                         }
-                    }
-                    else
-                    {
-                        resp.transferState = new Models.CommonModels.TransferState();
-                        resp.transferState.errorCode = 205;
-                        resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
-                        resp.transferState.state = "INVALID";
-                    }
+                 
                 }
                 else
                 {
                     resp.transferState = new Models.CommonModels.TransferState();
-                    resp.transferState.errorCode = 205;
-                    resp.transferState.errorMessage = "Ошибка внутренней системы получателя перевода при зачислении";
+                    resp.transferState.errorCode = 101;
+                    resp.transferState.errorMessage = "Участник перевода недоступен";
                     resp.transferState.state = "INVALID";
                 }
             }
@@ -252,9 +269,9 @@ namespace Tincoff_Gate.Controllers
                 amlRequest = amlResult.log.amlRequest,
                 amlResponse = amlResult.log.amlResponse,
 
-                amlCheckDateRec = amlResult2.log.amlCheckDate,
-                amlRequestRec = amlResult2.log.amlRequest,
-                amlResponseRec = amlResult2.log.amlResponse
+                amlCheckDateRec = amldate2,
+                amlRequestRec = amlreq2,
+                amlResponseRec = amlresp2
 
 
 
@@ -283,6 +300,48 @@ namespace Tincoff_Gate.Controllers
                 string ConcatStr =
                     req.platformReferenceNumber;
                 id = req.platformReferenceNumber;
+
+
+                Log logDb = logger.GetLog(req.platformReferenceNumber);
+                if (logDb != null && logDb.idPlatform != null && logDb.idPlatform != "" && logDb.state!= "CONFIRM_PENDING" &&   logDb.state != "CHECK_PENDING")
+                {
+
+                    CheckRespBank cResp = JsonConvert.DeserializeObject<CheckRespBank>(logDb.checkResponse);
+                    resp.platformReferenceNumber = cResp.platformReferenceNumber;
+                    resp.receiver = cResp.receiver;
+                    resp.receivingAmount = cResp.receivingAmount;
+                    resp.receivedDate = cResp.checkDate.ToString();
+
+
+                    resp.transferState = new Models.CommonModels.TransferState();
+                    resp.transferState.errorMessage = logDb.comment; 
+                    resp.transferState.state = logDb.state; 
+                    switch (resp.transferState.state)
+                    {
+                        case "INVALID":
+                            resp.transferState.errorCode = 206;
+                            break;
+                        case "CHECKED":
+                            resp.transferState.errorCode = 100;
+                            break;
+                        case "CONFIRMED":
+                            resp.transferState.errorCode = 200;
+                            break;
+                        case "CONFIRM_PENDING":
+                            resp.transferState.errorCode = 200;
+                            break;
+                        case "CHECK_PENDING":
+                            resp.transferState.errorCode = 100;
+                            break;
+                        default:
+                            resp.transferState.errorCode = 301;
+                            break;
+                    }
+                    resp.transferState.state = logDb.state; 
+                        return resp;
+                    
+                }
+
                 //Signature signature = new Signature();
 
                 //bool signVerificed = signature.VerifySignature(reqBody, req.platformSignature);
@@ -299,6 +358,28 @@ namespace Tincoff_Gate.Controllers
                 Integration.Integration integr = new Integration.Integration(_appSettings, _connectionString);
                 resp = integr.StatusBank(req);
                 
+                ////если статус изменен, меняю статус в логах
+                //if(resp!=null && resp.transferState!=null && resp.transferState.state!= logDb.state)
+                //{
+                //    logger.payLog(new Log
+                //    {
+                //        idPlatform = req.platformReferenceNumber,
+                //        state = resp.transferState.state,
+                //        comment = resp.transferState.errorMessage,
+                //        payRequest = logDb.payRequest,
+                //        payResponse = logDb.payResponse,
+                //        payDate = logDb.payDate,
+                //        amlCheckDate = logDb.amlCheckDate,
+                //        amlRequest = logDb.amlRequest,
+                //        amlResponse = logDb.amlResponse,
+
+                //        amlCheckDateRec = logDb.amlCheckDateRec,
+                //        amlRequestRec = logDb.amlRequestRec,
+                //        amlResponseRec = logDb.amlResponseRec,
+                //    });
+                //}
+
+
                 resp.receivedDate =  DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") + "Z";
                 resp.platformReferenceNumber = req.platformReferenceNumber;
             }
@@ -318,7 +399,9 @@ namespace Tincoff_Gate.Controllers
 
                 stateDate = DateTime.Now,
                 stateRequest = reqBody,
-                stateResponse = JsonConvert.SerializeObject(resp)
+                stateResponse = JsonConvert.SerializeObject(resp),
+                state = resp.transferState.state,
+                comment = resp.transferState.errorMessage,
             });
 
             return resp;
